@@ -320,8 +320,8 @@ const App: React.FC = () => {
                         <h3 className="text-white font-bold truncate">Pelada Clebinho</h3>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${match.status === 'open' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                              match.hasPendingVotes ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
-                                'bg-slate-800 text-slate-400'
+                            match.hasPendingVotes ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                              'bg-slate-800 text-slate-400'
                             }`}>
                             {match.hasPendingVotes ? 'Votar' : match.status === 'open' ? 'Aberta' : 'Finalizada'}
                           </span>
@@ -358,8 +358,8 @@ const App: React.FC = () => {
                             else handleOpenPlayersList(match.id);
                           }}
                           className={`flex-1 sm:flex-none px-6 py-3 rounded-xl font-black text-[10px] uppercase transition-all shadow-lg text-center whitespace-nowrap ${match.hasPendingVotes ? 'bg-orange-600 hover:bg-orange-500 text-slate-950 shadow-orange-600/20' :
-                              match.status === 'open' ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 shadow-emerald-600/20' :
-                                'bg-slate-800 text-slate-400 hover:text-white'
+                            match.status === 'open' ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 shadow-emerald-600/20' :
+                              'bg-slate-800 text-slate-400 hover:text-white'
                             }`}
                         >
                           {match.hasPendingVotes ? 'Votar Agora' : match.status === 'open' ? 'Ver Inscritos' : 'Resumo da Partida'}
@@ -427,30 +427,53 @@ const App: React.FC = () => {
 
     setLoading(true);
     setError(null);
+
     try {
       const cleanPhone = phone.replace(/\D/g, '');
-      const { data: auth, error: signUpError } = await supabase.auth.signUp({
-        phone: `+55${cleanPhone}`,
-        password
-      });
-      if (signUpError) throw signUpError;
 
-      if (auth.user) {
-        const { error: profileError } = await supabase.from('players').insert([{
-          id: auth.user.id,
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          phone: `+55${cleanPhone}`,
+          password,
+        });
+
+      if (signUpError) throw signUpError;
+      if (!signUpData.user) throw new Error('Usuário não criado');
+
+      const userId = signUpData.user.id;
+
+      /* cria profile */
+      const { error: profileError } = await supabase
+        .from('players')
+        .insert({
+          id: userId,
           name: name.trim(),
           phone: cleanPhone,
-          is_goalkeeper: isGoalkeeper
-        }]);
-        if (profileError) throw profileError;
-        await supabase.from('player_stats').insert([{ player_id: auth.user.id }]);
-      }
+          is_goalkeeper: isGoalkeeper,
+        });
+
+      if (profileError) throw profileError;
+
+      /* cria stats */
+      const { error: statsError } = await supabase
+        .from('player_stats')
+        .insert({ player_id: userId });
+
+      if (statsError) throw statsError;
+
+      /* 🔥 FORÇA reload dos dados */
+      await loadUserData(userId);
+
+      /* opcional: força step neutro */
+      setStep(Step.PHONE_CHECK);
     } catch (err: any) {
+      console.error(err);
       setError(err.message || 'Erro ao criar conta');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
