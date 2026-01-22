@@ -33,7 +33,7 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
         .eq('match_id', matchId)
         .maybeSingle();
 
-      if (existingResult && existingResult.players_team_a.length > 0) {
+      if (existingResult && existingResult.players_team_a && existingResult.players_team_a.length > 0) {
         const allIds = [...existingResult.players_team_a, ...existingResult.players_team_b];
         const { data: playersData } = await supabase
           .from('players')
@@ -99,6 +99,21 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
     setTeams({ teamA, teamB });
   };
 
+  const handleMovePlayer = (playerId: string, from: 'teamA' | 'teamB') => {
+    if (!teams || isLocked) return;
+
+    const to = from === 'teamA' ? 'teamB' : 'teamA';
+    const playerToMove = teams[from].find(p => p.id === playerId);
+    
+    if (!playerToMove) return;
+
+    setTeams({
+      ...teams,
+      [from]: teams[from].filter(p => p.id !== playerId),
+      [to]: [...teams[to], playerToMove]
+    });
+  };
+
   const handleSave = async () => {
     if (!teams || saving || isLocked) return;
     setSaving(true);
@@ -143,11 +158,14 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-0 md:p-4 bg-black/95 backdrop-blur-xl animate-in zoom-in duration-300">
-      <div className="w-full h-full md:h-auto md:max-w-5xl bg-slate-950 md:bg-slate-900 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden flex flex-col max-h-screen md:max-h-[90vh] shadow-2xl">
+      <div className="w-full h-full md:h-auto md:max-w-6xl bg-slate-950 md:bg-slate-900 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden flex flex-col max-h-screen md:max-h-[90vh] shadow-2xl">
         
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight">Escalação da Partida</h2>
+            <div>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Escalação da Partida</h2>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Defina os times manualmente ou sorteie</p>
+            </div>
             {isLocked && (
               <span className="px-2 py-1 bg-slate-800 text-slate-400 rounded-lg text-[8px] font-black uppercase border border-slate-700">Modo Leitura</span>
             )}
@@ -171,7 +189,7 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
               <button 
                 onClick={() => setIsLocked(false)}
                 className="p-3 bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-xl hover:bg-orange-500 hover:text-slate-950 transition-all"
-                title="Desbloquear sorteio"
+                title="Desbloquear para edição"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
               </button>
@@ -189,14 +207,26 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
               <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest">Processando equipes...</p>
             </div>
           ) : teams && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
               {isLocked && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] z-0">
                    <svg className="w-96 h-96 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
                 </div>
               )}
-              <TeamColumn title="Time A" players={teams.teamA} color="emerald" />
-              <TeamColumn title="Time B" players={teams.teamB} color="blue" />
+              <TeamColumn 
+                title="Time A" 
+                players={teams.teamA} 
+                color="emerald" 
+                onMovePlayer={(pid) => handleMovePlayer(pid, 'teamA')} 
+                isLocked={isLocked}
+              />
+              <TeamColumn 
+                title="Time B" 
+                players={teams.teamB} 
+                color="blue" 
+                onMovePlayer={(pid) => handleMovePlayer(pid, 'teamB')} 
+                isLocked={isLocked}
+              />
             </div>
           )}
         </div>
@@ -206,7 +236,7 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
             <>
               <button onClick={fetchAndSort} disabled={saving || saveSuccess} className="w-full sm:w-auto px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Sortear Novamente
+                Resetar/Sortear
               </button>
               <button onClick={handleSave} disabled={saving || saveSuccess} className={`w-full sm:w-64 py-4 font-black text-xs uppercase rounded-2xl transition-all flex items-center justify-center gap-2 ${saveSuccess ? 'bg-emerald-500 text-slate-950' : 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 shadow-xl shadow-emerald-600/20 active:scale-95'}`}>
                 {saving ? <div className="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" /> : saveSuccess ? "Time Confirmado!" : "Confirmar Escalação"}
@@ -218,7 +248,7 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
                 <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
                 Escalação Fixada para a Partida
               </div>
-              <p className="text-[9px] text-slate-600 font-bold uppercase">Clique no cadeado acima para alterar</p>
+              <p className="text-[9px] text-slate-600 font-bold uppercase">Clique no cadeado acima para editar manualmente</p>
             </div>
           )}
         </div>
@@ -226,30 +256,71 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
     </div>
   );
 };
+ 
+const TeamColumn = ({ 
+  title, 
+  players, 
+  color, 
+  onMovePlayer, 
+  isLocked 
+}: { 
+  title: string, 
+  players: PlayerWithStats[], 
+  color: 'emerald' | 'blue', 
+  onMovePlayer: (pid: string) => void,
+  isLocked: boolean
+}) => {
+  const gks = players.filter(p => p.is_goalkeeper).length;
+  const field = players.length - gks;
+  const totalOvr = Math.round(players.reduce((acc, p) => acc + (p.stats?.overall || 0), 0) * 20);
 
-const TeamColumn = ({ title, players, color }: { title: string, players: PlayerWithStats[], color: 'emerald' | 'blue' }) => (
-  <div className="space-y-4 relative z-10">
-    <div className={`flex justify-between items-end border-b pb-2 ${color === 'emerald' ? 'border-emerald-500/30' : 'border-blue-500/30'}`}>
-      <h3 className={`font-black uppercase text-lg ${color === 'emerald' ? 'text-emerald-500' : 'text-blue-500'}`}>{title}</h3>
-      <div className="text-right">
-        <p className="text-[10px] font-bold text-slate-500 uppercase">Total OVR</p>
-        <p className="text-xl font-black text-white">{Math.round(players.reduce((acc, p) => acc + (p.stats?.overall || 0), 0) * 20)}</p>
-      </div>
-    </div>
-    <div className="grid gap-2">
-      {players.map(p => (
-        <div key={p.id} className="flex items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/50 rounded-xl hover:bg-slate-800/60 transition-colors">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${p.is_goalkeeper ? 'bg-orange-500/20 text-orange-500 border border-orange-500/20' : 'bg-slate-700 text-slate-400'}`}>
-            {p.is_goalkeeper ? 'GK' : 'PL'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{p.name}</p>
-          </div>
-          <div className="px-2 py-1 bg-slate-900/60 rounded-lg border border-slate-800 text-emerald-500 font-black text-[10px]">
-            {Math.round((p.stats?.overall || 0) * 20)}
+  return (
+    <div className="space-y-4 relative z-10 flex flex-col">
+      <div className={`flex justify-between items-end border-b pb-3 ${color === 'emerald' ? 'border-emerald-500/30' : 'border-blue-500/30'}`}>
+        <div>
+          <h3 className={`font-black uppercase text-2xl ${color === 'emerald' ? 'text-emerald-500' : 'text-blue-500'}`}>{title}</h3>
+          <div className="flex gap-2 mt-1">
+            <span className="text-[9px] font-black uppercase text-slate-500 border border-slate-800 px-2 py-0.5 rounded-md">{field} Linha</span>
+            <span className="text-[9px] font-black uppercase text-slate-500 border border-slate-800 px-2 py-0.5 rounded-md">{gks} Goleiro</span>
           </div>
         </div>
-      ))}
+        <div className="text-right">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Team OVR</p>
+          <p className="text-3xl font-black text-white tabular-nums">{totalOvr}</p>
+        </div>
+      </div>
+      <div className="grid gap-2">
+        {players.length === 0 ? (
+          <div className="py-10 text-center border border-dashed border-slate-800 rounded-2xl">
+            <p className="text-[10px] font-black uppercase text-slate-700">Equipe Vazia</p>
+          </div>
+        ) : (
+          players.map(p => (
+            <div key={p.id} className="group flex items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/50 rounded-xl hover:bg-slate-800/60 transition-all">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${p.is_goalkeeper ? 'bg-orange-500/20 text-orange-500 border border-orange-500/20 shadow-lg shadow-orange-500/10' : 'bg-slate-700 text-slate-400'}`}>
+                {p.is_goalkeeper ? 'GK' : 'PL'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{p.name}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="px-2 py-1 bg-slate-900/60 rounded-lg border border-slate-800 text-emerald-500 font-black text-[10px] tabular-nums">
+                  {Math.round((p.stats?.overall || 0) * 20)}
+                </div>
+                {!isLocked && (
+                  <button 
+                    onClick={() => onMovePlayer(p.id)}
+                    className={`p-2 rounded-lg transition-all ${color === 'emerald' ? 'bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-slate-950'}`}
+                    title={color === 'emerald' ? "Mover para Time B" : "Mover para Time A"}
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${color === 'emerald' ? 'rotate-0' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
