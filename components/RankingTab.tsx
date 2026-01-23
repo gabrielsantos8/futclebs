@@ -8,6 +8,7 @@ interface RankingPlayer {
   name: string;
   is_goalkeeper: boolean;
   stats: PlayerStats | null;
+  avatar: string | null;
 }
 
 interface RankingTabProps {
@@ -34,7 +35,8 @@ export const RankingTab: React.FC<RankingTabProps> = ({ onPlayerClick }) => {
           id,
           name,
           is_goalkeeper,
-          player_stats (*)
+          player_stats (*),
+          avatar
         `);
 
       if (error) throw error;
@@ -43,7 +45,8 @@ export const RankingTab: React.FC<RankingTabProps> = ({ onPlayerClick }) => {
         id: p.id,
         name: p.name,
         is_goalkeeper: p.is_goalkeeper,
-        stats: Array.isArray(p.player_stats) ? p.player_stats[0] : p.player_stats
+        stats: Array.isArray(p.player_stats) ? p.player_stats[0] : p.player_stats,
+        avatar: p.avatar
       }));
 
       setAllPlayers(players);
@@ -169,7 +172,7 @@ const PodiumStep: React.FC<{ player: RankingPlayer, rank: number, onClick: () =>
                      'from-amber-600 to-amber-800 shadow-amber-700/20';
   
   const overall = player.stats?.overall ? Math.round(Number(player.stats.overall) * 20) : 0;
-
+console.log(player);
   return (
     <div 
       onClick={onClick}
@@ -191,7 +194,17 @@ const PodiumStep: React.FC<{ player: RankingPlayer, rank: number, onClick: () =>
           isSecond ? 'border-slate-400 bg-slate-400/20' : 
           'border-amber-700 bg-amber-700/20'
         }`}>
-          {player.name.charAt(0).toUpperCase()}
+          {player.avatar ? (
+            <img 
+              src={player.avatar}
+              alt="Avatar"
+              className="w-full h-full object-cover rounded-full"
+            />
+          ) : (
+            <span className="text-white font-black text-xl sm:text-3xl">
+              {player.name.charAt(0).toUpperCase()}
+            </span>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         </div>
       </div>

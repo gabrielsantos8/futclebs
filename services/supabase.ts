@@ -12,6 +12,7 @@ export type Player = {
   phone: string;
   is_admin: boolean;
   is_goalkeeper: boolean;
+  avatar: string | null;
   created_at: string;
 };
 

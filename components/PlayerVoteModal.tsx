@@ -210,7 +210,13 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
               <div className="text-center space-y-3">
                 <div className="inline-flex flex-col items-center">
                    <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-[1.5rem] flex items-center justify-center text-3xl font-black text-white border border-slate-700/50 shadow-2xl mb-4 group-hover:scale-105 transition-transform">
-                    {currentPlayer.name.charAt(0).toUpperCase()}
+                    {currentPlayer.avatar ? (
+                      <img src={currentPlayer.avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                    ) : ( 
+                      <span className="text-white font-black text-xl sm:text-3xl">
+                        {currentPlayer.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                    </div>
                    <h3 className="text-3xl font-black text-white tracking-tight">{currentPlayer.name}</h3>
                    <span className={`mt-2 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${

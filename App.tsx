@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, Player, PlayerStats, Match } from './services/supabase';
 import { AuthCard } from './components/AuthCard';
 import { Input } from './components/Input';
@@ -58,6 +58,24 @@ const App: React.FC = () => {
   const [isMiniStatsOpen, setIsMiniStatsOpen] = useState(false);
   const [selectedPlayerData, setSelectedPlayerData] = useState<{ name: string, is_goalkeeper: boolean, stats: PlayerStats | null } | null>(null);
 
+  // ✅ Avatar Edit Modal (Base64 + Crop + UI bonita)
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+
+  // ✅ controla objectURL (evita leak)
+  const avatarObjectUrlRef = useRef<string | null>(null);
+
+  // Crop states
+  const cropBoxRef = useRef<HTMLDivElement | null>(null);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [zoom, setZoom] = useState(1);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null);
+
   // Form states
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -75,7 +93,6 @@ const App: React.FC = () => {
 
         let hasPendingVotes = false;
         if (m.status === 'finished' && userReg) {
-          // Buscar os times da partida para saber quem são os companheiros
           const { data: matchRes } = await supabase
             .from('match_results')
             .select('players_team_a, players_team_b')
@@ -87,7 +104,6 @@ const App: React.FC = () => {
             const teamB = matchRes.players_team_b || [];
 
             const userTeamIds = teamA.includes(userId) ? teamA : teamB.includes(userId) ? teamB : [];
-
             const teammatesIds = userTeamIds.filter(id => id !== userId);
 
             if (teammatesIds.length > 0) {
@@ -99,7 +115,6 @@ const App: React.FC = () => {
                 .in('target_player_id', teammatesIds);
 
               const votedIds = new Set(votes?.map(v => v.target_player_id) || []);
-
               hasPendingVotes = teammatesIds.some(tid => !votedIds.has(tid));
             }
           }
@@ -192,7 +207,6 @@ const App: React.FC = () => {
     };
   }, [loadUserData]);
 
-
   const handleLogout = async () => {
     try {
       setLoading(true);
@@ -259,6 +273,199 @@ const App: React.FC = () => {
     return 0;
   };
 
+  // ✅ Avatar: abrir modal
+  const openAvatarModal = () => {
+    setIsAvatarModalOpen(true);
+    setAvatarFile(null);
+    setAvatarSrc(null);
+    setCropX(0);
+    setCropY(0);
+    setZoom(1);
+  };
+
+  const closeAvatarModal = () => {
+    setIsAvatarModalOpen(false);
+
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = null;
+    }
+
+    setAvatarFile(null);
+    setAvatarSrc(null);
+    setCropX(0);
+    setCropY(0);
+    setZoom(1);
+    setIsDragging(false);
+    dragStartRef.current = null;
+  };
+
+  const handleAvatarSelectFile = (file: File | null) => {
+    if (!file) return;
+
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = null;
+    }
+
+    setAvatarFile(file);
+    const url = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = url;
+
+    setAvatarSrc(url);
+    setCropX(0);
+    setCropY(0);
+    setZoom(1);
+  };
+
+  // ✅ Drag no crop
+  const onCropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!avatarSrc) return;
+    setIsDragging(true);
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    dragStartRef.current = { x: e.clientX, y: e.clientY, cx: cropX, cy: cropY };
+  };
+
+  const onCropPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStartRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    setCropX(dragStartRef.current.cx + dx);
+    setCropY(dragStartRef.current.cy + dy);
+  };
+
+  const onCropPointerUp = () => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+  };
+
+  // ✅ Gerar Base64 (256x256) com crop (clamp - sem preto)
+  const generateCroppedBase64 = async (): Promise<string | null> => {
+    if (!avatarSrc || !cropBoxRef.current) return null;
+
+    const boxSize = cropBoxRef.current.clientWidth;
+    const outputSize = 256;
+
+    const img = new Image();
+    img.src = avatarSrc;
+
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Erro ao carregar imagem'));
+    });
+
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+
+    const baseScale = Math.max(boxSize / iw, boxSize / ih);
+    const totalScale = baseScale * zoom;
+
+    const renderedW = iw * totalScale;
+    const renderedH = ih * totalScale;
+
+    const imgLeft = (boxSize - renderedW) / 2 + cropX;
+    const imgTop = (boxSize - renderedH) / 2 + cropY;
+
+    let sx = (0 - imgLeft) / totalScale;
+    let sy = (0 - imgTop) / totalScale;
+    let sSize = boxSize / totalScale;
+
+    if (sx < 0) sx = 0;
+    if (sy < 0) sy = 0;
+
+    if (sx + sSize > iw) sSize = iw - sx;
+    if (sy + sSize > ih) sSize = ih - sy;
+
+    if (sSize <= 0) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.drawImage(
+      img,
+      sx,
+      sy,
+      sSize,
+      sSize,
+      0,
+      0,
+      outputSize,
+      outputSize
+    );
+
+    return canvas.toDataURL('image/jpeg', 0.9);
+  };
+
+const handleAvatarSaveBase64 = async () => {
+    if (!userProfile || !avatarSrc) return;
+    if (avatarUploading) return;
+
+    setAvatarUploading(true);
+    setError(null);
+
+    try {
+      const base64 = await generateCroppedBase64();
+      if (!base64) throw new Error('Não foi possível gerar o avatar');
+
+      setUserProfile((prev) => (prev ? { ...prev, avatar: base64 } : prev));
+
+      const { error: updateError } = await supabase.from('players').update({ avatar: base64 }).eq('id', session?.user.id);
+
+
+      if (updateError) throw updateError;
+
+      closeAvatarModal();
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Erro ao atualizar avatar");
+
+    } finally {
+      await fetchUserProfile(userProfile.id);
+    }
+};
+
+
+ const handleAvatarRemove = async () => {
+  if (!userProfile) return;
+  if (avatarUploading) return;
+
+  setAvatarUploading(true);
+  setError(null);
+
+  try {
+    setUserProfile((prev) => (prev ? { ...prev, avatar: null } : prev));
+
+    const { data, error: updateError } = await supabase
+      .from('players')
+      .update({ avatar: null })
+      .eq('id', session?.user.id)
+      .select('id')
+      .limit(1);
+
+    if (updateError) throw updateError;
+
+    if (!data || data.length === 0) {
+      throw new Error('UPDATE não aplicado (RLS bloqueando ou ID não encontrado)');
+    }
+
+    closeAvatarModal();
+  } catch (err: any) {
+    console.error(err);
+    setError(err?.message || "Erro ao remover avatar");
+    await fetchUserProfile(userProfile.id);
+  } finally {
+    setAvatarUploading(false);
+  }
+};
+
+
   if (initializing) return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
       <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
@@ -308,6 +515,42 @@ const App: React.FC = () => {
             <div className="flex justify-between items-center relative z-10">
               <div>
                 <div className="flex items-center gap-2 mb-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openAvatarModal();
+                    }}
+                    className="relative group/avatar"
+                    title="Editar avatar"
+                  >
+                    <div className="relative">
+                      {userProfile.avatar ? (
+                        <img
+                          src={userProfile.avatar}
+                          alt="Avatar"
+                          className="w-10 h-10 rounded-full object-cover border-2 border-white/30 transition-all duration-300 group-hover/avatar:scale-105 group-hover/avatar:border-white/70 shadow-lg shadow-black/30"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center border-2 border-white/10 transition-all duration-300 group-hover/avatar:scale-105 group-hover/avatar:border-white/40 shadow-lg shadow-black/30">
+                          <span className="text-white font-black text-xl">
+                            {userProfile.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 rounded-full opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300 ring-2 ring-white/40" />
+                    </div>
+
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-950 border border-white/20 flex items-center justify-center transition-all duration-300 group-hover/avatar:scale-110 group-hover/avatar:border-white/50">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                          d="M15.232 5.232l3.536 3.536M9 11l6.732-6.732a2.5 2.5 0 013.536 3.536L12.536 14.536a2.5 2.5 0 01-1.768.732H9v-2.732A2.5 2.5 0 019.732 11z"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+
                   <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest">Seu Nível</p>
                   <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[8px] font-black text-white uppercase border border-white/10 tracking-widest">
                     {userProfile.is_goalkeeper ? 'Goleiro' : 'Linha'}
@@ -369,7 +612,6 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="w-full flex flex-col gap-3 mt-2 sm:mt-0 sm:w-auto">
-                      {/* Grid de botões mobile: 2 colunas */}
                       <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full">
                         {match.status === 'finished' && !match.hasPendingVotes && (
                           <button
@@ -381,7 +623,6 @@ const App: React.FC = () => {
                           </button>
                         )}
 
-                        {/* Botão Escalação */}
                         {(match.status === 'open' || match.status === 'finished') && (
                           <button
                             onClick={() => { setSelectedMatchId(match.id); setIsTeamSortingOpen(true); }}
@@ -392,7 +633,6 @@ const App: React.FC = () => {
                           </button>
                         )}
 
-                        {/* Ação Primária */}
                         <button
                           onClick={() => {
                             if (match.hasPendingVotes) handleOpenVoteModal(match.id);
@@ -408,7 +648,6 @@ const App: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Menu Admin - Exibido abaixo ou ao lado em telas maiores */}
                       {userProfile.is_admin && match.status === 'open' && (
                         <div className="w-full">
                           {activeAdminMenu === match.id ? (
@@ -436,6 +675,171 @@ const App: React.FC = () => {
             )}
           </div>
         </div>
+
+        {isAvatarModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={closeAvatarModal}
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+            <div
+              className="relative w-full max-w-md rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/40" />
+
+              <div className="relative p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Personalização</p>
+                    <h2 className="text-white font-black text-lg">Editar Avatar</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeAvatarModal}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-slate-300 font-bold text-xs">Cortar imagem</p>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                        1:1
+                      </span>
+                    </div>
+
+                    <div
+                      ref={cropBoxRef}
+                      className={`relative w-full aspect-square rounded-2xl overflow-hidden border border-white/10 bg-slate-950 select-none ${avatarSrc ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      onPointerDown={onCropPointerDown}
+                      onPointerMove={onCropPointerMove}
+                      onPointerUp={onCropPointerUp}
+                      onPointerCancel={onCropPointerUp}
+                      onPointerLeave={onCropPointerUp}
+                    >
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute inset-0 opacity-40">
+                          <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/10" />
+                          <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/10" />
+                          <div className="absolute top-1/3 left-0 right-0 h-px bg-white/10" />
+                          <div className="absolute top-2/3 left-0 right-0 h-px bg-white/10" />
+                        </div>
+
+                        <div className="absolute inset-0 ring-1 ring-white/15 rounded-2xl" />
+                        <div className="absolute inset-0 shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.15)]" />
+                      </div>
+
+                      {avatarSrc ? (
+                        <img
+                          src={avatarSrc}
+                          alt="Crop"
+                          draggable={false}
+                          className="absolute top-1/2 left-1/2 will-change-transform"
+                          style={{
+                            transform: `translate(calc(-50% + ${cropX}px), calc(-50% + ${cropY}px)) scale(${zoom})`,
+                            transformOrigin: 'center',
+                            minWidth: '100%',
+                            minHeight: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-center p-6">
+                          <div className="space-y-2">
+                            <div className="mx-auto w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                              <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                            </div>
+                            <p className="text-slate-200 font-black text-sm">Selecione uma foto</p>
+                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+                              Arraste para posicionar • Zoom para ajustar
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Zoom</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                          {zoom.toFixed(2)}x
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={3}
+                        step={0.01}
+                        value={zoom}
+                        onChange={(e) => setZoom(Number(e.target.value))}
+                        className="w-full accent-emerald-500"
+                        disabled={!avatarSrc}
+                      />
+                    </div>
+
+                    <p className="mt-3 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                      Dica: segure e arraste para mover
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="block">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleAvatarSelectFile(e.target.files?.[0] || null)}
+                      />
+                      <div className="w-full px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-black uppercase tracking-widest text-center cursor-pointer transition-all">
+                        Selecionar Foto
+                      </div>
+                    </label>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={!avatarSrc || avatarUploading}
+                        onClick={handleAvatarSaveBase64}
+                        className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-slate-950 font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-[0.99]"
+                      >
+                        {avatarUploading ? "Salvando..." : "Salvar Avatar"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={avatarUploading || (!userProfile?.avatar)}
+                        onClick={handleAvatarRemove}
+                        className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-red-500/15 border border-white/10 hover:border-red-500/30 text-red-300 hover:text-red-200 disabled:opacity-50 font-black text-xs uppercase tracking-widest transition-all"
+                      >
+                        Remover
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        AVATAR SUPREMO
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-medium mt-1">
+                        Escolha seu avatar para farmar aura.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <PlayerStatsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} stats={userStats} playerName={userProfile.name} playerId={userProfile.id} isGoalkeeper={userProfile.is_goalkeeper} onViewMatchSummary={(mid) => { setSelectedMatchId(mid); setIsMatchSummaryOpen(true); }} />
         <MatchPlayersModal isOpen={isMatchPlayersModalOpen} onClose={() => setIsMatchPlayersModalOpen(false)} matchId={selectedMatchId || ''} currentUserId={userProfile.id} currentUserIsGoalkeeper={userProfile.is_goalkeeper} onPlayerClick={(p) => { setSelectedPlayerData({ name: p.name, is_goalkeeper: p.is_goalkeeper, stats: p.stats }); setIsMiniStatsOpen(true); }} onRefreshMatchList={() => fetchMatches(userProfile.id)} />
@@ -516,6 +920,7 @@ const App: React.FC = () => {
           name: name.trim(),
           phone: cleanPhone,
           is_goalkeeper: isGoalkeeper,
+          avatar: null,
         });
 
       if (profileError) throw profileError;
@@ -539,7 +944,6 @@ const App: React.FC = () => {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">

@@ -140,7 +140,13 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                   <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3 overflow-hidden">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0 ${p.is_goalkeeper ? 'bg-orange-500/20 text-orange-500 border border-orange-500/20' : 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20'}`}>
-                        {p.name.charAt(0).toUpperCase()}
+                        {p.avatar ? (
+                          <img src={p.avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <span className="text-white font-black text-xl">
+                            {p.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
                       </div>
                       <div className="overflow-hidden">
                         <p className="text-sm font-bold text-white truncate">{p.name}</p>
