@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase, Player, PlayerStats, Match } from './services/supabase';
 import { AuthCard } from './components/AuthCard';
@@ -14,6 +13,8 @@ import { MatchSummaryModal } from './components/MatchSummaryModal';
 import { RankingTab } from './components/RankingTab';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { AdminUserManagementModal } from './components/AdminUserManagementModal';
+import { MatchCommentsModal } from './components/MatchCommentsModal';
 
 enum Step {
   PHONE_CHECK,
@@ -51,6 +52,8 @@ const App: React.FC = () => {
   const [isMatchSummaryOpen, setIsMatchSummaryOpen] = useState(false);
   const [isCreateMatchOpen, setIsCreateMatchOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isMatchCommentsOpen, setIsMatchCommentsOpen] = useState(false);
+  const [isAdminUserManagementOpen, setIsAdminUserManagementOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isMiniStatsOpen, setIsMiniStatsOpen] = useState(false);
   const [selectedPlayerData, setSelectedPlayerData] = useState<{ name: string, is_goalkeeper: boolean, stats: PlayerStats | null } | null>(null);
@@ -218,11 +221,13 @@ const App: React.FC = () => {
   const handleOpenAdminManagement = (matchId: string) => { setSelectedMatchId(matchId); setIsAdminManagementOpen(true); setActiveAdminMenu(null); };
   const handleOpenTeamSorting = (matchId: string) => { setSelectedMatchId(matchId); setIsTeamSortingOpen(true); setActiveAdminMenu(null); };
   const handleOpenMatchFinish = (matchId: string) => { setSelectedMatchId(matchId); setIsMatchFinishOpen(true); setActiveAdminMenu(null); };
+  const handleOpenCommentsModal = (matchId: string) => { setSelectedMatchId(matchId); setIsMatchCommentsOpen(true); };
 
   const handleDeleteMatch = async () => {
     if (!selectedMatchId || !userProfile) return;
     setLoading(true);
     try {
+      await supabase.from('match_comments').delete().eq('match_id', selectedMatchId);
       await supabase.from('player_votes').delete().eq('match_id', selectedMatchId);
       await supabase.from('match_results').delete().eq('match_id', selectedMatchId);
       await supabase.from('match_players').delete().eq('match_id', selectedMatchId);
@@ -275,12 +280,20 @@ const App: React.FC = () => {
             </div>
             <div className="flex gap-2">
               {userProfile.is_admin && (
-                <button
-                  onClick={() => setIsCreateMatchOpen(true)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-xl transition-all text-xs font-black uppercase shadow-lg shadow-emerald-600/20"
-                >
-                  Criar Partida
-                </button>
+                <>
+                  <button
+                    onClick={() => setIsAdminUserManagementOpen(true)}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 rounded-xl transition-all text-xs font-black uppercase"
+                  >
+                    Gerenciar Usuários
+                  </button>
+                  <button
+                    onClick={() => setIsCreateMatchOpen(true)}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-xl transition-all text-xs font-black uppercase shadow-lg shadow-emerald-600/20"
+                  >
+                    Criar Partida
+                  </button>
+                </>
               )}
               <button onClick={handleLogout} className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-500 hover:text-white transition-all text-xs font-black uppercase">
                 Sair
@@ -345,8 +358,8 @@ const App: React.FC = () => {
                         <h3 className="text-white font-bold truncate">Pelada Clebinho</h3>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${match.status === 'open' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                              match.hasPendingVotes ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
-                                'bg-slate-800 text-slate-400'
+                            match.hasPendingVotes ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                              'bg-slate-800 text-slate-400'
                             }`}>
                             {match.hasPendingVotes ? 'Votar' : match.status === 'open' ? 'Aberta' : 'Finalizada'}
                           </span>
@@ -358,6 +371,16 @@ const App: React.FC = () => {
                     <div className="w-full flex flex-col gap-3 mt-2 sm:mt-0 sm:w-auto">
                       {/* Grid de botões mobile: 2 colunas */}
                       <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full">
+                        {match.status === 'finished' && !match.hasPendingVotes && (
+                          <button
+                            onClick={() => handleOpenCommentsModal(match.id)}
+                            className="px-3 py-3 bg-slate-800/80 text-emerald-500 hover:text-emerald-400 border border-emerald-500/20 rounded-xl font-black text-[9px] sm:text-[10px] uppercase transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-emerald-500/5"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                            Resenha
+                          </button>
+                        )}
+
                         {/* Botão Escalação */}
                         {(match.status === 'open' || match.status === 'finished') && (
                           <button
@@ -377,8 +400,8 @@ const App: React.FC = () => {
                             else handleOpenPlayersList(match.id);
                           }}
                           className={`px-3 py-3 rounded-xl font-black text-[9px] sm:text-[10px] uppercase transition-all shadow-lg text-center flex items-center justify-center gap-2 ${match.hasPendingVotes ? 'bg-orange-600 hover:bg-orange-500 text-slate-950 shadow-orange-600/20' :
-                              match.status === 'open' ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 shadow-emerald-600/20' :
-                                'bg-slate-800 text-slate-400 hover:text-white border border-slate-700/30'
+                            match.status === 'open' ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 shadow-emerald-600/20' :
+                              'bg-slate-800 text-slate-400 hover:text-white border border-slate-700/30'
                             }`}
                         >
                           {match.hasPendingVotes ? 'Votar Agora' : match.status === 'open' ? 'Inscritos' : 'Resumo'}
@@ -420,10 +443,12 @@ const App: React.FC = () => {
         <TeamSortingModal isOpen={isTeamSortingOpen} onClose={() => setIsTeamSortingOpen(false)} matchId={selectedMatchId || ''} isAdmin={userProfile.is_admin} />
         <MatchFinishModal isOpen={isMatchFinishOpen} onClose={() => setIsMatchFinishOpen(false)} matchId={selectedMatchId || ''} onRefresh={() => fetchMatches(userProfile.id)} />
         <PlayerVoteModal isOpen={isPlayerVoteOpen} onClose={() => setIsPlayerVoteOpen(false)} matchId={selectedMatchId || ''} currentUserId={userProfile.id} onRefresh={() => fetchMatches(userProfile.id)} />
-        <MatchSummaryModal isOpen={isMatchSummaryOpen} onClose={() => setIsMatchSummaryOpen(false)} matchId={selectedMatchId || ''} />
+        <MatchSummaryModal isOpen={isMatchSummaryOpen} onClose={() => setIsMatchSummaryOpen(false)} matchId={selectedMatchId || ''} currentUserId={userProfile.id} isAdmin={userProfile.is_admin} />
         <CreateMatchModal isOpen={isCreateMatchOpen} onClose={() => setIsCreateMatchOpen(false)} onRefresh={() => fetchMatches(userProfile.id)} />
+        <AdminUserManagementModal isOpen={isAdminUserManagementOpen} onClose={() => setIsAdminUserManagementOpen(false)} currentUserId={userProfile.id} />
         <ConfirmationModal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setSelectedMatchId(null); }} onConfirm={handleDeleteMatch} isLoading={loading} title="Excluir Partida?" description="Esta ação é irreversível. Todos os dados da partida, incluindo inscritos e resultados, serão removidos permanentemente." confirmLabel="Sim, Excluir" cancelLabel="Cancelar" />
         <MiniStatsModal isOpen={isMiniStatsOpen} onClose={() => setIsMiniStatsOpen(false)} name={selectedPlayerData?.name || ''} isGoalkeeper={selectedPlayerData?.is_goalkeeper || false} stats={selectedPlayerData?.stats || null} />
+        <MatchCommentsModal isOpen={isMatchCommentsOpen} onClose={() => setIsMatchCommentsOpen(false)} matchId={selectedMatchId || ''} currentUserId={userProfile.id} isAdmin={userProfile.is_admin} />
       </div>
     );
   }

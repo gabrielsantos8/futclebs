@@ -64,3 +64,12 @@ export type PlayerVote = {
   fisico: number;
   created_at: string;
 };
+
+export type MatchComment = {
+  id: string;
+  match_id: string;
+  player_id: string;
+  content: string;
+  created_at: string;
+  player_name?: string;
+};

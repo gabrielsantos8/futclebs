@@ -6,10 +6,13 @@ interface MatchSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
   matchId: string;
+  currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 interface DetailedVote {
   id: string;
+  voterName?: string;
   velocidade: number;
   finalizacao: number;
   passe: number;
@@ -26,13 +29,17 @@ interface PlayerWithStats extends Player {
   individualVotes?: DetailedVote[];
 }
 
-export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, onClose, matchId }) => {
+const SUPER_USER_ID = '5e05a3d9-3a9a-4ad0-99f7-72315bbf5990';
+
+export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, onClose, matchId, currentUserId, isAdmin }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'roster' | 'ratings'>('roster');
   const [result, setResult] = useState<MatchResult | null>(null);
   const [teams, setTeams] = useState<{ teamA: PlayerWithStats[], teamB: PlayerWithStats[] } | null>(null);
   const [playerRatings, setPlayerRatings] = useState<PlayerWithStats[]>([]);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
+
+  const isSuperUser = currentUserId === SUPER_USER_ID;
 
   useEffect(() => {
     if (isOpen && matchId) {
@@ -72,10 +79,10 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
             const teamB = resultData.players_team_b.map((id: string) => formatted.find(p => p.id === id)).filter(Boolean);
             setTeams({ teamA, teamB });
 
-            // 2. Carregar TODOS os Votos da Partida (Anonimato total)
+            // 2. Carregar TODOS os Votos da Partida
             const { data: votesData } = await supabase
               .from('player_votes')
-              .select('*')
+              .select('*, voter:players!voter_id(name)')
               .eq('match_id', matchId);
 
             if (votesData) {
@@ -83,7 +90,6 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                 const playerVotes = votesData.filter(v => v.target_player_id === player.id);
                 
                 const individualVotes: DetailedVote[] = playerVotes.map(v => {
-                  // Se for goleiro, consideramos apenas passe e defesa para a média individual do voto
                   const attrs = player.is_goalkeeper 
                     ? [v.passe, v.defesa]
                     : [v.velocidade, v.finalizacao, v.passe, v.drible, v.defesa, v.fisico];
@@ -93,6 +99,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                   
                   return {
                     id: v.id,
+                    voterName: (v as any).voter?.name,
                     velocidade: v.velocidade,
                     finalizacao: v.finalizacao,
                     passe: v.passe,
@@ -137,7 +144,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/40">
           <div>
             <h2 className="text-xl font-black text-white uppercase tracking-tight">Súmula da Partida</h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Placar e Notas Anônimas</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Placar e Notas {isSuperUser ? 'Detalhadas' : 'Anônimas'}</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -212,7 +219,9 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                   <div className="space-y-4 animate-in fade-in duration-500">
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Ranking de Performance</h3>
-                      <span className="text-[9px] font-bold text-slate-600 uppercase">Votos são 100% anônimos</span>
+                      <span className="text-[9px] font-bold text-slate-600 uppercase">
+                        {isSuperUser ? 'Visualização completa de Super Admin' : 'Votos são 100% anônimos'}
+                      </span>
                     </div>
                     
                     {playerRatings.length === 0 ? (
@@ -266,22 +275,26 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                               </div>
                             </div>
 
-                            {/* Detalhamento dos Votos - Listagem Individual e Anônima */}
+                            {/* Detalhamento dos Votos */}
                             {expandedPlayer === p.id && (
                               <div className="bg-slate-950/50 border-t border-slate-800/50 p-4 animate-in slide-in-from-top-2">
-                                <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4">Votos Individuais Recebidos</h4>
+                                <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4">Detalhamento dos Votos Recebidos</h4>
                                 <div className="space-y-3">
                                   {p.individualVotes?.map((vote, vIdx) => (
                                     <div key={vote.id} className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3">
                                       <div className="flex justify-between items-center mb-3">
                                         <div className="flex items-center gap-2">
                                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avaliação #{vIdx + 1}</span>
+                                          <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avaliação #{vIdx + 1}</span>
+                                            {isSuperUser && vote.voterName && (
+                                              <span className="text-[9px] font-black text-emerald-500/80 uppercase">Votado por: {vote.voterName}</span>
+                                            )}
+                                          </div>
                                         </div>
                                         <span className="text-xs font-black text-white px-2 py-0.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">{Math.round(vote.average)} pts</span>
                                       </div>
                                       <div className={`grid ${p.is_goalkeeper ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'} gap-2`}>
-                                        {/* Goleiros mostram apenas Passe e Defesa */}
                                         {!p.is_goalkeeper && <MiniStat label="VEL" value={vote.velocidade} />}
                                         {!p.is_goalkeeper && <MiniStat label="FIN" value={vote.finalizacao} />}
                                         <MiniStat label="PAS" value={vote.passe} />
