@@ -14,6 +14,7 @@ interface VoteTarget {
   id: string;
   name: string;
   is_goalkeeper: boolean;
+  avatar: string | null;
 }
 
 export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClose, matchId, currentUserId, onRefresh }) => {
@@ -64,7 +65,7 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
       // 2. Buscar participantes que são do mesmo time (excluindo o próprio usuário)
       const { data: participants } = await supabase
         .from('match_players')
-        .select('player_id, players(name, is_goalkeeper)')
+        .select('player_id, players(name, is_goalkeeper, avatar)')
         .eq('match_id', matchId)
         .in('player_id', userTeamIds)
         .neq('player_id', currentUserId);
@@ -84,7 +85,8 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
           .map((p: any) => ({
             id: p.player_id,
             name: p.players.name,
-            is_goalkeeper: p.players.is_goalkeeper
+            is_goalkeeper: p.players.is_goalkeeper,
+            avatar: p.players.avatar
           }));
         setPlayersToVote(remaining);
       }
@@ -209,12 +211,12 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
               {/* Header do Jogador Atual */}
               <div className="text-center space-y-3">
                 <div className="inline-flex flex-col items-center">
-                   <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-[1.5rem] flex items-center justify-center text-3xl font-black text-white border border-slate-700/50 shadow-2xl mb-4 group-hover:scale-105 transition-transform">
+                   <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full flex items-center justify-center text-3xl font-black text-white border border-slate-700/50 shadow-2xl mb-4 group-hover:scale-105 transition-transform">
                     {currentPlayer.avatar ? (
                       <img src={currentPlayer.avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                     ) : ( 
                       <span className="text-white font-black text-xl sm:text-3xl">
-                        {currentPlayer.name.charAt(0).toUpperCase()}
+                        {currentPlayer.avatar ? <img src={currentPlayer.avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" /> : currentPlayer.name.charAt(0).toUpperCase()}
                       </span>
                     )}
                    </div>

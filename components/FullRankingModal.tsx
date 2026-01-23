@@ -98,7 +98,17 @@ export const FullRankingModal: React.FC<FullRankingModalProps> = ({ isOpen, onCl
                   }`}>
                     {rank}º
                   </div>
-
+                  {player.avatar ? (
+                    <img
+                      src={player.avatar}
+                      alt={player.name}
+                      className="w-10 h-10 rounded-full object-cover border border-slate-700"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center">
+                      <span className="text-sm font-bold text-slate-400 uppercase">{player.name.charAt(0)}</span>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-bold text-white truncate group-hover:text-emerald-400 transition-colors">

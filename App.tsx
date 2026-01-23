@@ -56,15 +56,13 @@ const App: React.FC = () => {
   const [isAdminUserManagementOpen, setIsAdminUserManagementOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isMiniStatsOpen, setIsMiniStatsOpen] = useState(false);
-  const [selectedPlayerData, setSelectedPlayerData] = useState<{ name: string, is_goalkeeper: boolean, stats: PlayerStats | null } | null>(null);
+  const [selectedPlayerData, setSelectedPlayerData] = useState<{ name: string, is_goalkeeper: boolean, stats: PlayerStats | null, avatar: string | null } | null>(null);
 
-  // ✅ Avatar Edit Modal (Base64 + Crop + UI bonita)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
-  // ✅ controla objectURL (evita leak)
   const avatarObjectUrlRef = useRef<string | null>(null);
 
   // Crop states
@@ -580,7 +578,7 @@ const handleAvatarSaveBase64 = async () => {
 
           <div className="space-y-4">
             {activeCategory === 'ranking' ? (
-              <RankingTab onPlayerClick={(p) => { setSelectedPlayerData({ name: p.name, is_goalkeeper: p.is_goalkeeper, stats: p.stats }); setIsMiniStatsOpen(true); }} />
+              <RankingTab onPlayerClick={(p) => { setSelectedPlayerData({ name: p.name, is_goalkeeper: p.is_goalkeeper, stats: p.stats, avatar: p.avatar }); setIsMiniStatsOpen(true); }} />
             ) : (
               loading ? (
                 <div className="py-20 text-center"><div className="w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto" /></div>
@@ -851,7 +849,7 @@ const handleAvatarSaveBase64 = async () => {
         <CreateMatchModal isOpen={isCreateMatchOpen} onClose={() => setIsCreateMatchOpen(false)} onRefresh={() => fetchMatches(userProfile.id)} />
         <AdminUserManagementModal isOpen={isAdminUserManagementOpen} onClose={() => setIsAdminUserManagementOpen(false)} currentUserId={userProfile.id} />
         <ConfirmationModal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setSelectedMatchId(null); }} onConfirm={handleDeleteMatch} isLoading={loading} title="Excluir Partida?" description="Esta ação é irreversível. Todos os dados da partida, incluindo inscritos e resultados, serão removidos permanentemente." confirmLabel="Sim, Excluir" cancelLabel="Cancelar" />
-        <MiniStatsModal isOpen={isMiniStatsOpen} onClose={() => setIsMiniStatsOpen(false)} name={selectedPlayerData?.name || ''} isGoalkeeper={selectedPlayerData?.is_goalkeeper || false} stats={selectedPlayerData?.stats || null} />
+        <MiniStatsModal isOpen={isMiniStatsOpen} onClose={() => setIsMiniStatsOpen(false)} name={selectedPlayerData?.name || ''} isGoalkeeper={selectedPlayerData?.is_goalkeeper || false} stats={selectedPlayerData?.stats || null} avatar={selectedPlayerData?.avatar || null} />
         <MatchCommentsModal isOpen={isMatchCommentsOpen} onClose={() => setIsMatchCommentsOpen(false)} matchId={selectedMatchId || ''} currentUserId={userProfile.id} isAdmin={userProfile.is_admin} />
       </div>
     );
