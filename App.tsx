@@ -15,6 +15,7 @@ import { CreateMatchModal } from './components/CreateMatchModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { AdminUserManagementModal } from './components/AdminUserManagementModal';
 import { MatchCommentsModal } from './components/MatchCommentsModal';
+import { VotingStatusModal } from './components/VotingStatusModal';
 
 enum Step {
   PHONE_CHECK,
@@ -53,6 +54,7 @@ const App: React.FC = () => {
   const [isCreateMatchOpen, setIsCreateMatchOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isMatchCommentsOpen, setIsMatchCommentsOpen] = useState(false);
+  const [isVotingStatusOpen, setIsVotingStatusOpen] = useState(false);
   const [isAdminUserManagementOpen, setIsAdminUserManagementOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isMiniStatsOpen, setIsMiniStatsOpen] = useState(false);
@@ -232,6 +234,7 @@ const App: React.FC = () => {
   const handleOpenSummaryModal = (matchId: string) => { setSelectedMatchId(matchId); setIsMatchSummaryOpen(true); };
   const handleOpenAdminManagement = (matchId: string) => { setSelectedMatchId(matchId); setIsAdminManagementOpen(true); setActiveAdminMenu(null); };
   const handleOpenTeamSorting = (matchId: string) => { setSelectedMatchId(matchId); setIsTeamSortingOpen(true); setActiveAdminMenu(null); };
+  const handleOpenVotingStatus = (matchId: string) => { setSelectedMatchId(matchId); setIsVotingStatusOpen(true); };
   const handleOpenMatchFinish = (matchId: string) => { setSelectedMatchId(matchId); setIsMatchFinishOpen(true); setActiveAdminMenu(null); };
   const handleOpenCommentsModal = (matchId: string) => { setSelectedMatchId(matchId); setIsMatchCommentsOpen(true); };
 
@@ -646,22 +649,39 @@ const handleAvatarSaveBase64 = async () => {
                         </button>
                       </div>
 
-                      {userProfile.is_admin && match.status === 'open' && (
+                      {/* Menu Admin - Exibido abaixo ou ao lado em telas maiores */}
+                      {userProfile.is_admin && (
                         <div className="w-full">
-                          {activeAdminMenu === match.id ? (
-                            <div className="flex flex-wrap gap-1.5 animate-in slide-in-from-top-2 duration-300 justify-center sm:justify-end">
-                              <button onClick={() => handleOpenAdminManagement(match.id)} className="px-3 py-2 bg-slate-800 text-white rounded-lg font-black text-[8px] uppercase hover:bg-slate-700 transition-all border border-slate-700/50">Lista</button>
-                              <button onClick={() => handleOpenTeamSorting(match.id)} className="px-3 py-2 bg-blue-600 text-white rounded-lg font-black text-[8px] uppercase hover:bg-blue-500 transition-all border border-blue-400/30">Sortear</button>
-                              <button onClick={() => handleOpenMatchFinish(match.id)} className="px-3 py-2 bg-red-600 text-white rounded-lg font-black text-[8px] uppercase hover:bg-red-500 transition-all border border-red-400/30">Finalizar</button>
-                              <button onClick={() => { setSelectedMatchId(match.id); setIsDeleteConfirmOpen(true); }} className="px-3 py-2 bg-red-950/50 text-red-500 border border-red-900/30 rounded-lg font-black text-[8px] uppercase hover:bg-red-600 hover:text-white transition-all">Excluir</button>
-                              <button onClick={() => setActiveAdminMenu(null)} className="p-2 bg-slate-800 text-slate-400 rounded-lg hover:text-white border border-slate-700/50">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                              </button>
-                            </div>
-                          ) : (
-                            <button onClick={() => setActiveAdminMenu(match.id)} className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 text-slate-400 hover:text-white border border-slate-800 rounded-xl font-black text-[9px] uppercase transition-all flex items-center justify-center gap-2">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                              Painel Admin
+                          {match.status === 'open' && (
+                            <>
+                              {activeAdminMenu === match.id ? (
+                                <div className="flex flex-wrap gap-1.5 animate-in slide-in-from-top-2 duration-300 justify-center sm:justify-end">
+                                  <button onClick={() => handleOpenAdminManagement(match.id)} className="px-3 py-2 bg-slate-800 text-white rounded-lg font-black text-[8px] uppercase hover:bg-slate-700 transition-all border border-slate-700/50">Lista</button>
+                                  <button onClick={() => handleOpenTeamSorting(match.id)} className="px-3 py-2 bg-blue-600 text-white rounded-lg font-black text-[8px] uppercase hover:bg-blue-500 transition-all border border-blue-400/30">Sortear</button>
+                                  <button onClick={() => handleOpenMatchFinish(match.id)} className="px-3 py-2 bg-red-600 text-white rounded-lg font-black text-[8px] uppercase hover:bg-red-500 transition-all border border-red-400/30">Finalizar</button>
+                                  <button onClick={() => { setSelectedMatchId(match.id); setIsDeleteConfirmOpen(true); }} className="px-3 py-2 bg-red-950/50 text-red-500 border border-red-900/30 rounded-lg font-black text-[8px] uppercase hover:bg-red-600 hover:text-white transition-all">Excluir</button>
+                                  <button onClick={() => setActiveAdminMenu(null)} className="p-2 bg-slate-800 text-slate-400 rounded-lg hover:text-white border border-slate-700/50">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setActiveAdminMenu(match.id)} className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 text-slate-400 hover:text-white border border-slate-800 rounded-xl font-black text-[9px] uppercase transition-all flex items-center justify-center gap-2">
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                  Painel Admin
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {match.status === 'finished' && (
+                            <button
+                              onClick={() => handleOpenVotingStatus(match.id)}
+                              className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 text-slate-400 hover:text-white border border-slate-800 rounded-xl font-black text-[9px] uppercase transition-all flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                              </svg>
+                              Status Votação
                             </button>
                           )}
                         </div>
@@ -851,6 +871,7 @@ const handleAvatarSaveBase64 = async () => {
         <ConfirmationModal isOpen={isDeleteConfirmOpen} onClose={() => { setIsDeleteConfirmOpen(false); setSelectedMatchId(null); }} onConfirm={handleDeleteMatch} isLoading={loading} title="Excluir Partida?" description="Esta ação é irreversível. Todos os dados da partida, incluindo inscritos e resultados, serão removidos permanentemente." confirmLabel="Sim, Excluir" cancelLabel="Cancelar" />
         <MiniStatsModal isOpen={isMiniStatsOpen} onClose={() => setIsMiniStatsOpen(false)} name={selectedPlayerData?.name || ''} isGoalkeeper={selectedPlayerData?.is_goalkeeper || false} stats={selectedPlayerData?.stats || null} avatar={selectedPlayerData?.avatar || null} />
         <MatchCommentsModal isOpen={isMatchCommentsOpen} onClose={() => setIsMatchCommentsOpen(false)} matchId={selectedMatchId || ''} currentUserId={userProfile.id} isAdmin={userProfile.is_admin} />
+        <VotingStatusModal isOpen={isVotingStatusOpen} onClose={() => setIsVotingStatusOpen(false)} matchId={selectedMatchId || ''} isAdmin={userProfile.is_admin} />
       </div>
     );
   }
