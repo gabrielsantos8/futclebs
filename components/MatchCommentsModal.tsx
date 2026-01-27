@@ -23,7 +23,14 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
   const isSuperUser = currentUserId === SUPER_USER_ID;
 
   useEffect(() => {
-    if (isOpen && matchId) {
+    if (!isOpen) {
+      setComments([]);
+      setNewComment('');
+      setLoading(false);
+      return;
+    }
+
+    if (matchId) {
       fetchComments();
     }
   }, [isOpen, matchId]);

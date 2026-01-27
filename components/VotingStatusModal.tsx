@@ -25,7 +25,14 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
   const [matchDate, setMatchDate] = useState('');
 
   useEffect(() => {
-    if (isOpen && matchId && isAdmin) {
+    if (!isOpen) {
+      setPlayers([]);
+      setMatchDate('');
+      setLoading(false);
+      return;
+    }
+
+    if (matchId && isAdmin) {
       loadVotingStatus();
     }
   }, [isOpen, matchId, isAdmin]);

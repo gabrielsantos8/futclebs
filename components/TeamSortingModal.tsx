@@ -23,7 +23,15 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
   const [noTeamsDefined, setNoTeamsDefined] = useState(false);
 
   useEffect(() => {
-    if (isOpen && matchId) checkExistingAndLoad();
+    if (!isOpen) {
+      setTeams(null);
+      setNoTeamsDefined(false);
+      setLoading(false);
+      setIsLocked(true);
+      return;
+    }
+
+    if (matchId) checkExistingAndLoad();
   }, [isOpen, matchId]);
 
   const checkExistingAndLoad = async () => {

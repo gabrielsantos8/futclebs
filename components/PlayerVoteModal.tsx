@@ -33,7 +33,14 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
   });
 
   useEffect(() => {
-    if (isOpen && matchId) loadPlayers();
+    if (!isOpen) {
+      setPlayersToVote([]);
+      setLoading(false);
+      setCurrentIndex(0);
+      return;
+    }
+
+    if (matchId) loadPlayers();
   }, [isOpen, matchId]);
 
   const loadPlayers = async () => {

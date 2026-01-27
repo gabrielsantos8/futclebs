@@ -52,7 +52,13 @@ export const MatchPlayersModal: React.FC<MatchPlayersModalProps> = ({
   const isBlockedByRole = !isUserRegistered && !isFull && !canUserJoin;
 
   useEffect(() => {
-    if (isOpen && matchId) {
+    if (!isOpen) {
+      setPlayers([]);
+      setLoading(false);
+      return;
+    }
+
+    if (matchId) {
       fetchRegisteredPlayers();
     }
   }, [isOpen, matchId]);

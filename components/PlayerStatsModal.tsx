@@ -36,9 +36,13 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchHistory();
+    if (!isOpen) {
+      setHistory([]);
+      setLoadingHistory(false);
+      return;
     }
+
+    fetchHistory();
   }, [isOpen, playerId]);
 
   const fetchHistory = async () => {

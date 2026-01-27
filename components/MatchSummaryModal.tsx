@@ -42,7 +42,17 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
   const isSuperUser = currentUserId === SUPER_USER_ID;
 
   useEffect(() => {
-    if (isOpen && matchId) {
+    if (!isOpen) {
+      setTeams(null);
+      setPlayerRatings([]);
+      setResult(null);
+      setLoading(false);
+      setActiveTab('roster');
+      setExpandedPlayer(null);
+      return;
+    }
+
+    if (matchId) {
       loadSummary();
       setActiveTab('roster');
       setExpandedPlayer(null);
