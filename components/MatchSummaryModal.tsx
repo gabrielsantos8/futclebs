@@ -38,6 +38,8 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
   const [teams, setTeams] = useState<{ teamA: PlayerWithStats[], teamB: PlayerWithStats[] } | null>(null);
   const [playerRatings, setPlayerRatings] = useState<PlayerWithStats[]>([]);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
+  const [allVoted, setAllVoted] = useState(false);
+  const [voterStats, setVoterStats] = useState({ current: 0, total: 0 });
 
   const isSuperUser = currentUserId === SUPER_USER_ID;
 
@@ -94,6 +96,18 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
               .from('player_votes')
               .select('*, voter:players!voter_id(name)')
               .eq('match_id', matchId);
+
+             const { count: totalRegistered } = await supabase
+              .from('match_players')
+              .select('*', { count: 'exact', head: true })
+              .eq('match_id', matchId);
+
+            const uniqueVoters = new Set(votesData?.map(v => v.voter_id) || []);
+            const hasAllVoted = uniqueVoters.size >= (totalRegistered || 0);
+
+            setAllVoted(hasAllVoted);
+            setVoterStats({ current: uniqueVoters.size, total: totalRegistered || 0 });
+
 
             if (votesData) {
               const ratings = formatted.map(player => {
@@ -173,7 +187,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
               <p className="text-slate-500 font-bold uppercase text-xs">Aguardando definição do placar.</p>
             </div>
           ) : (
-            <>
+             <>
               {/* Placar */}
               <div className="bg-slate-950/20 p-8 border-b border-slate-800/50">
                 <div className="flex flex-col items-center gap-6">
@@ -227,99 +241,129 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                   </div>
                 ) : (
                   <div className="space-y-4 animate-in fade-in duration-500">
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Ranking de Performance</h3>
-                      <span className="text-[9px] font-bold text-slate-600 uppercase">
-                        {isSuperUser ? 'Visualização completa de Super Admin' : 'Votos são 100% anônimos'}
-                      </span>
-                    </div>
-                    
-                    {playerRatings.length === 0 ? (
-                      <div className="py-20 text-center opacity-30">
-                        <p className="text-xs font-black uppercase">Nenhuma avaliação realizada.</p>
+                    {!allVoted && !isSuperUser ? (
+                      <div className="py-20 text-center space-y-6 max-w-sm mx-auto animate-in zoom-in">
+                        <div className="w-20 h-20 bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto text-slate-600 border border-slate-700/50">
+                           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                           </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-white font-black uppercase text-lg">Notas Bloqueadas</h3>
+                          <p className="text-slate-500 text-xs mt-2 leading-relaxed font-medium px-4">
+                            As avaliações só serão reveladas quando todos os {voterStats.total} jogadores confirmados tiverem enviado seus votos.
+                          </p>
+                        </div>
+                        <div className="space-y-2 px-8">
+                          <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 px-1">
+                            <span>Votação em Andamento</span>
+                            <span>{voterStats.current} / {voterStats.total}</span>
+                          </div>
+                          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-500 transition-all duration-1000" 
+                              style={{ width: `${(voterStats.current / (voterStats.total || 1)) * 100}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-3">
-                        {playerRatings.map((p, idx) => (
-                          <div 
-                            key={p.id} 
-                            className={`bg-slate-800/30 border rounded-2xl transition-all overflow-hidden ${
-                              expandedPlayer === p.id ? 'border-emerald-500' : 'border-slate-700/50 hover:border-emerald-500/30'
-                            }`}
-                          >
-                            <div 
-                              onClick={() => setExpandedPlayer(expandedPlayer === p.id ? null : p.id)}
-                              className="p-4 flex items-center justify-between cursor-pointer active:bg-slate-800/50"
-                            >
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
-                                  idx === 0 ? 'bg-yellow-400 text-slate-950' : 
-                                  idx === 1 ? 'bg-slate-300 text-slate-950' :
-                                  idx === 2 ? 'bg-amber-700 text-white' :
-                                  'bg-slate-800 text-slate-500'
-                                }`}>
-                                  {idx + 1}º
-                                </div>
-                                <div className="overflow-hidden">
-                                  <p className="text-white font-bold text-sm truncate">{p.name}</p>
-                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
-                                    {p.votesCount} {p.votesCount === 1 ? 'Avaliação recebida' : 'Avaliações recebidas'}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4 shrink-0">
-                                <div className="text-right">
-                                  <div className="flex items-baseline justify-end gap-1">
-                                    <span className="text-xl font-black text-emerald-500 tabular-nums">
-                                      {p.matchRating ? Math.round(p.matchRating) : '--'}
-                                    </span>
-                                    <span className="text-[8px] font-black text-emerald-500/60 uppercase">MÉDIA</span>
-                                  </div>
-                                </div>
-                                <svg 
-                                  className={`w-4 h-4 text-slate-600 transition-transform ${expandedPlayer === p.id ? 'rotate-180' : ''}`} 
-                                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      <>
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Ranking de Performance</h3>
+                          <span className="text-[9px] font-bold text-slate-600 uppercase">
+                            {isSuperUser ? 'Visualização completa de Super Admin' : 'Votos são 100% anônimos'}
+                          </span>
+                        </div>
+                        
+                        {playerRatings.length === 0 ? (
+                          <div className="py-20 text-center opacity-30">
+                            <p className="text-xs font-black uppercase">Nenhuma avaliação realizada.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3">
+                            {playerRatings.map((p, idx) => (
+                              <div 
+                                key={p.id} 
+                                className={`bg-slate-800/30 border rounded-2xl transition-all overflow-hidden ${
+                                  expandedPlayer === p.id ? 'border-emerald-500' : 'border-slate-700/50 hover:border-emerald-500/30'
+                                }`}
+                              >
+                                <div 
+                                  onClick={() => setExpandedPlayer(expandedPlayer === p.id ? null : p.id)}
+                                  className="p-4 flex items-center justify-between cursor-pointer active:bg-slate-800/50"
                                 >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </div>
-                            </div>
-
-                            {/* Detalhamento dos Votos */}
-                            {expandedPlayer === p.id && (
-                              <div className="bg-slate-950/50 border-t border-slate-800/50 p-4 animate-in slide-in-from-top-2">
-                                <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4">Detalhamento dos Votos Recebidos</h4>
-                                <div className="space-y-3">
-                                  {p.individualVotes?.map((vote, vIdx) => (
-                                    <div key={vote.id} className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3">
-                                      <div className="flex justify-between items-center mb-3">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                          <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avaliação #{vIdx + 1}</span>
-                                            {isSuperUser && vote.voterName && (
-                                              <span className="text-[9px] font-black text-emerald-500/80 uppercase">Votado por: {vote.voterName}</span>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <span className="text-xs font-black text-white px-2 py-0.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">{Math.round(vote.average)} pts</span>
-                                      </div>
-                                      <div className={`grid ${p.is_goalkeeper ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'} gap-2`}>
-                                        {!p.is_goalkeeper && <MiniStat label="VEL" value={vote.velocidade} />}
-                                        {!p.is_goalkeeper && <MiniStat label="FIN" value={vote.finalizacao} />}
-                                        <MiniStat label="PAS" value={vote.passe} />
-                                        {!p.is_goalkeeper && <MiniStat label="DRI" value={vote.drible} />}
-                                        <MiniStat label="DEF" value={vote.defesa} />
-                                        {!p.is_goalkeeper && <MiniStat label="FIS" value={vote.fisico} />}
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                                      idx === 0 ? 'bg-yellow-400 text-slate-950' : 
+                                      idx === 1 ? 'bg-slate-300 text-slate-950' :
+                                      idx === 2 ? 'bg-amber-700 text-white' :
+                                      'bg-slate-800 text-slate-500'
+                                    }`}>
+                                      {idx + 1}º
+                                    </div>
+                                    <div className="overflow-hidden">
+                                      <p className="text-white font-bold text-sm truncate">{p.name}</p>
+                                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                                        {p.votesCount} {p.votesCount === 1 ? 'Avaliação recebida' : 'Avaliações recebidas'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-4 shrink-0">
+                                    <div className="text-right">
+                                      <div className="flex items-baseline justify-end gap-1">
+                                        <span className="text-xl font-black text-emerald-500 tabular-nums">
+                                          {p.matchRating ? Math.round(p.matchRating) : '--'}
+                                        </span>
+                                        <span className="text-[8px] font-black text-emerald-500/60 uppercase">MÉDIA</span>
                                       </div>
                                     </div>
-                                  ))}
+                                    <svg 
+                                      className={`w-4 h-4 text-slate-600 transition-transform ${expandedPlayer === p.id ? 'rotate-180' : ''}`} 
+                                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </div>
                                 </div>
+
+                                {/* Detalhamento dos Votos */}
+                                {expandedPlayer === p.id && (
+                                  <div className="bg-slate-950/50 border-t border-slate-800/50 p-4 animate-in slide-in-from-top-2">
+                                    <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4">Detalhamento dos Votos Recebidos</h4>
+                                    <div className="space-y-3">
+                                      {p.individualVotes?.map((vote, vIdx) => (
+                                        <div key={vote.id} className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3">
+                                          <div className="flex justify-between items-center mb-3">
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                              <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avaliação #{vIdx + 1}</span>
+                                                {isSuperUser && vote.voterName && (
+                                                  <span className="text-[9px] font-black text-emerald-500/80 uppercase">Votado por: {vote.voterName}</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <span className="text-xs font-black text-white px-2 py-0.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">{Math.round(vote.average)} pts</span>
+                                          </div>
+                                          <div className={`grid ${p.is_goalkeeper ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'} gap-2`}>
+                                            {!p.is_goalkeeper && <MiniStat label="VEL" value={vote.velocidade} />}
+                                            {!p.is_goalkeeper && <MiniStat label="FIN" value={vote.finalizacao} />}
+                                            <MiniStat label="PAS" value={vote.passe} />
+                                            {!p.is_goalkeeper && <MiniStat label="DRI" value={vote.drible} />}
+                                            <MiniStat label="DEF" value={vote.defesa} />
+                                            {!p.is_goalkeeper && <MiniStat label="FIS" value={vote.fisico} />}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
