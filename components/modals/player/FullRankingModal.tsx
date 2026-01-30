@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { PlayerStats } from '../services/supabase';
+import { PlayerStats } from '../../../services/supabase.ts';
 
 interface RankingPlayer {
   id: string;

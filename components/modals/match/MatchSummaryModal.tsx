@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase, Player, PlayerStats, MatchResult } from '../services/supabase';
+import { supabase, Player, PlayerStats, MatchResult } from '@/services/supabase';
+import { SUPER_ADMIN_IDS } from '@/constants/app.constants';
 
 interface MatchSummaryModalProps {
   isOpen: boolean;
@@ -29,8 +30,6 @@ interface PlayerWithStats extends Player {
   individualVotes?: DetailedVote[];
 }
 
-const SUPER_USER_ID = '5e05a3d9-3a9a-4ad0-99f7-72315bbf5990';
-
 export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, onClose, matchId, currentUserId, isAdmin }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'roster' | 'ratings'>('roster');
@@ -41,7 +40,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
   const [allVoted, setAllVoted] = useState(false);
   const [voterStats, setVoterStats] = useState({ current: 0, total: 0 });
 
-  const isSuperUser = currentUserId === SUPER_USER_ID;
+  const isSuperUser = currentUserId ? SUPER_ADMIN_IDS.includes(currentUserId) : false;
 
   useEffect(() => {
     if (!isOpen) {

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase, Player, PlayerStats } from '../services/supabase';
+import { supabase, Player, PlayerStats } from '../../../services/supabase.ts';
 
 interface AdminMatchManagementModalProps {
   isOpen: boolean;

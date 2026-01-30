@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase, PlayerStats } from '../services/supabase';
+import { supabase, PlayerStats } from '../../../services/supabase.ts';
 
 interface PlayerStatsModalProps {
   isOpen: boolean;

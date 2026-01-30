@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { supabase, PlayerStats } from '../services/supabase';
-import { FullRankingModal } from './FullRankingModal';
+import { supabase, PlayerStats } from '../../services/supabase.ts';
+import { FullRankingModal } from '../modals/player/FullRankingModal.tsx';
 
 interface RankingPlayer {
   id: string;

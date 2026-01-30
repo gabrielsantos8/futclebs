@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { supabase, PlayerStats } from '../services/supabase';
-import { ConfirmationModal } from './ConfirmationModal';
+import { supabase, PlayerStats } from '../../../services/supabase.ts';
+import { ConfirmationModal } from '../shared/ConfirmationModal.tsx';
 
 interface RegisteredPlayer {
   player_id: string;

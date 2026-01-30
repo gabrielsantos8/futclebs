@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, MatchComment } from '../services/supabase';
+import { supabase, MatchComment } from '../../../services/supabase';
+import { SUPER_ADMIN_IDS } from '../../../constants/app.constants';
 
 interface MatchCommentsModalProps {
   isOpen: boolean;
@@ -10,8 +11,6 @@ interface MatchCommentsModalProps {
   isAdmin: boolean;
 }
 
-const SUPER_USER_ID = '5e05a3d9-3a9a-4ad0-99f7-72315bbf5990';
-
 export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, onClose, matchId, currentUserId, isAdmin }) => {
   const [comments, setComments] = useState<MatchComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +19,7 @@ export const MatchCommentsModal: React.FC<MatchCommentsModalProps> = ({ isOpen, 
   const [deleting, setDeleting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const isSuperUser = currentUserId === SUPER_USER_ID;
+  const isSuperUser = SUPER_ADMIN_IDS.includes(currentUserId);
 
   useEffect(() => {
     if (!isOpen) {

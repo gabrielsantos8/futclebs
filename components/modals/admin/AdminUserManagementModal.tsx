@@ -1,17 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase, Player } from '../services/supabase';
-import { PlayerPositionSelector } from './PlayerPositionSelector';
+import { supabase, Player } from '@/services/supabase';
+import { PlayerPositionSelectorModal } from '../player/PlayerPositionSelectorModal.tsx';
+import { SUPER_ADMIN_IDS } from '@/constants/app.constants';
 
 interface AdminUserManagementModalProps {
   isOpen: boolean;
   currentUserId: string;
   onClose: () => void;
 }
-
-const SUPER_USER_IDS = [
-  '5e05a3d9-3a9a-4ad0-99f7-72315bbf5990',
-  '64043e4d-79e3-4875-974d-4eafa3a23823'
-];
 
 export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> = ({ isOpen, currentUserId, onClose }) => {
   const [loading, setLoading] = useState(true);
@@ -24,7 +20,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [editingPositionsUserId, setEditingPositionsUserId] = useState<string | null>(null);
 
-  const isSuperUser = SUPER_USER_IDS.includes(currentUserId);
+  const isSuperUser = SUPER_ADMIN_IDS.includes(currentUserId);
 
 
   useEffect(() => {
@@ -46,7 +42,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
       return;
     }
     if (!userId) return;
-    if (SUPER_USER_IDS.includes(userId)) {
+    if (SUPER_ADMIN_IDS.includes(userId)) {
       setMessage({ type: 'error', text: 'Não é permitido deletar um super admin.' });
       return;
     }
@@ -223,9 +219,27 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                       </div>
                       <div className="overflow-hidden">
                         <p className="text-sm font-bold text-white truncate">{p.name}</p>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
-                          {p.phone ? `+55 ${p.phone}` : 'Sem telefone'} • {p.is_admin ? 'Administrador' : 'Jogador'}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                            {p.phone ? `+55 ${p.phone}` : 'Sem telefone'} • {p.is_admin ? 'Administrador' : 'Jogador'}
+                          </p>
+                        </div>
+                        {/* Posições do jogador */}
+                        {p.positions && p.positions.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            {p.positions.map((pos) => (
+                              <span
+                                key={pos}
+                                className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded text-[9px] font-black uppercase"
+                              >
+                                {pos === 'goalkeeper' ? '🧤 GOL' :
+                                 pos === 'defender' ? '🛡️ DEF' :
+                                 pos === 'midfielder' ? '⚽ MEI' :
+                                 pos === 'forward' ? '🎯 ATA' : pos}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -247,15 +261,15 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                       </button>
                       <button
                         onClick={() => handleDeleteUser(p.id)}
-                        disabled={actionLoading || deletingUserId === p.id || SUPER_USER_IDS.includes(p.id) || p.id === currentUserId}
+                        disabled={actionLoading || deletingUserId === p.id || SUPER_ADMIN_IDS.includes(p.id) || p.id === currentUserId}
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-                          SUPER_USER_IDS.includes(p.id) || p.id === currentUserId
+                          SUPER_ADMIN_IDS.includes(p.id) || p.id === currentUserId
                             ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                             : deletingUserId === p.id || actionLoading
                             ? 'bg-red-600/60 text-white opacity-70'
                             : 'bg-red-600 text-white hover:bg-red-500'
                           }`}
-                        title={SUPER_USER_IDS.includes(p.id) ? 'Super admins não podem ser deletados' : p.id === currentUserId ? 'Você não pode deletar a si mesmo' : 'Deletar usuário'}
+                        title={SUPER_ADMIN_IDS.includes(p.id) ? 'Super admins não podem ser deletados' : p.id === currentUserId ? 'Você não pode deletar a si mesmo' : 'Deletar usuário'}
                       >
                         {deletingUserId === p.id ? 'Deletando...' : 'Deletar'}
                       </button>
@@ -321,7 +335,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
       )}
 
     {editingPositionsUserId && (
-      <PlayerPositionSelector
+      <PlayerPositionSelectorModal
         isOpen={true}
         onClose={() => setEditingPositionsUserId(null)}
         playerId={editingPositionsUserId}

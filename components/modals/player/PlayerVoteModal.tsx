@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase, PlayerStats } from '../services/supabase';
+import { supabase, PlayerStats } from '../../../services/supabase.ts';
 
 interface PlayerVoteModalProps {
   isOpen: boolean;
@@ -154,6 +154,50 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
     }
   };
 
+  const handleFinishVoting = async () => {
+    if (submitting) return;
+
+    const remainingPlayers = playersToVote.slice(currentIndex);
+    const confirmMsg = remainingPlayers.length > 1
+      ? `Você ainda tem ${remainingPlayers.length} jogadores para avaliar. Deseja finalizar agora? Os votos restantes serão preenchidos com nota média (3 estrelas - 60 pts).`
+      : 'Deseja finalizar a votação agora? Este jogador receberá nota média (3 estrelas - 60 pts).';
+
+    if (!confirm(confirmMsg)) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Criar votos com nota média (3) para todos os jogadores restantes
+      const votesToInsert = remainingPlayers.map(player => ({
+        match_id: matchId,
+        voter_id: currentUserId,
+        target_player_id: player.id,
+        velocidade: 3,
+        finalizacao: 3,
+        passe: 3,
+        drible: 3,
+        defesa: 3,
+        fisico: 3
+      }));
+
+      const { error } = await supabase
+        .from('player_votes')
+        .insert(votesToInsert);
+
+      if (error) throw error;
+
+      onRefresh();
+      onClose();
+    } catch (e: any) {
+      console.error('Erro ao finalizar votação:', e);
+      alert('Erro ao finalizar votação: ' + (e.message || 'Tente novamente'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const currentPlayer = playersToVote[currentIndex];
@@ -256,11 +300,11 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
 
         {/* Footer Fixo */}
         {!loading && playersToVote.length > 0 && (
-          <div className="p-6 md:p-8 bg-slate-900/90 backdrop-blur-md border-t border-slate-800">
-            <button 
+          <div className="p-6 md:p-8 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 space-y-3">
+            <button
               onClick={handleNextVote}
               disabled={submitting}
-              className="w-full max-w-md mx-auto py-5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-sm uppercase tracking-widest rounded-[1.25rem] transition-all shadow-2xl shadow-emerald-600/30 flex items-center justify-center gap-3 active:scale-[0.98]"
+              className="w-full max-w-md mx-auto block py-5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-sm uppercase tracking-widest rounded-[1.25rem] transition-all shadow-2xl shadow-emerald-600/30 flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50"
             >
               {submitting ? (
                 <div className="w-6 h-6 border-3 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
@@ -271,6 +315,20 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
                 </>
               )}
             </button>
+
+            {playersToVote.length > 1 && (
+              <button
+                onClick={handleFinishVoting}
+                disabled={submitting}
+                className="w-full max-w-md mx-auto block py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all border border-slate-700/50 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                title="Finalizar votação com notas médias (3 estrelas) para os jogadores restantes"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Finalizar Votação ({playersToVote.length - currentIndex} restantes)</span>
+              </button>
+            )}
           </div>
         )}
       </div>

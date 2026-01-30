@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase, Player, PlayerStats } from '../services/supabase';
+import { supabase, Player, PlayerStats } from '../../../services/supabase.ts';
 
 interface TeamSortingModalProps {
   isOpen: boolean;

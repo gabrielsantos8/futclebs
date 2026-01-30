@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { supabase } from '../services/supabase';
-import { Input } from './Input';
+import { supabase } from '../../../services/supabase.ts';
+import { Input } from '../shared/Input.tsx';
 
 interface CreateMatchModalProps {
   isOpen: boolean;

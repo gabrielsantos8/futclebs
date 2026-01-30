@@ -1,15 +1,22 @@
 
 import React, { useState } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase } from '../../../services/supabase.ts';
 
 interface MatchFinishModalProps {
   isOpen: boolean;
   onClose: () => void;
   matchId: string;
   onRefresh: () => void;
+  onOpenVotingStatus?: () => void;
 }
 
-export const MatchFinishModal: React.FC<MatchFinishModalProps> = ({ isOpen, onClose, matchId, onRefresh }) => {
+export const MatchFinishModal: React.FC<MatchFinishModalProps> = ({
+  isOpen,
+  onClose,
+  matchId,
+  onRefresh,
+  onOpenVotingStatus
+}) => {
   const [goalsA, setGoalsA] = useState(0);
   const [goalsB, setGoalsB] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -43,6 +50,13 @@ export const MatchFinishModal: React.FC<MatchFinishModalProps> = ({ isOpen, onCl
 
       onRefresh();
       onClose();
+
+      // Abrir modal de votação após finalizar (se callback fornecido)
+      if (onOpenVotingStatus) {
+        setTimeout(() => {
+          onOpenVotingStatus();
+        }, 300);
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao finalizar partida");
     } finally {
@@ -118,7 +132,9 @@ export const MatchFinishModal: React.FC<MatchFinishModalProps> = ({ isOpen, onCl
             </button>
             
             <p className="text-[9px] text-slate-600 text-center font-bold uppercase tracking-wider">
-              Atenção: Ao finalizar, a votação será aberta para todos os jogadores.
+              {onOpenVotingStatus
+                ? "Ao confirmar, você será redirecionado para gerenciar a votação."
+                : "Atenção: Ao finalizar, a votação será aberta para todos os jogadores."}
             </p>
           </div>
         </div>

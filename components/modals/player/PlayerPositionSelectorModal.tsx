@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase } from '../../../services/supabase.ts';
 
 interface PlayerPositionSelectorProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ const POSITIONS = [
   { id: 'Ataque', name: 'Ataque', icon: '⚽', color: 'bg-red-500' },
 ];
 
-export const PlayerPositionSelector: React.FC<PlayerPositionSelectorProps> = ({
+export const PlayerPositionSelectorModal: React.FC<PlayerPositionSelectorProps> = ({
   isOpen,
   onClose,
   playerId,
