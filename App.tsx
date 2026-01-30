@@ -43,6 +43,14 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<MatchCategory>('open');
   const [activeAdminMenu, setActiveAdminMenu] = useState<string | null>(null);
 
+  // Super admins hardcoded
+  const SUPER_ADMIN_IDS = [
+    '64043e4d-79e3-4875-974d-4eafa3a23823',
+    '5e05a3d9-3a9a-4ad0-99f7-72315bbf5990'
+  ];
+
+  const isSuperAdmin = !!userProfile && SUPER_ADMIN_IDS.includes(userProfile.id);
+
   // Modals
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isMatchPlayersModalOpen, setIsMatchPlayersModalOpen] = useState(false);
@@ -487,21 +495,21 @@ const handleAvatarSaveBase64 = async () => {
               )}
             </div>
             <div className="flex gap-2">
-              {userProfile.is_admin && (
-                <>
-                  <button
-                    onClick={() => setIsAdminUserManagementOpen(true)}
-                    className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 rounded-xl transition-all text-xs font-black uppercase"
-                  >
-                    Gerenciar Usuários
-                  </button>
-                  <button
-                    onClick={() => setIsCreateMatchOpen(true)}
-                    className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-xl transition-all text-xs font-black uppercase shadow-lg shadow-emerald-600/20"
-                  >
-                    Criar Partida
-                  </button>
-                </>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setIsAdminUserManagementOpen(true)}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 rounded-xl transition-all text-xs font-black uppercase"
+                >
+                  Gerenciar Usuários
+                </button>
+              )}
+              {userProfile?.is_admin && (
+                <button
+                  onClick={() => setIsCreateMatchOpen(true)}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-xl transition-all text-xs font-black uppercase shadow-lg shadow-emerald-600/20"
+                >
+                  Criar Partida
+                </button>
               )}
               <button onClick={handleLogout} className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-500 hover:text-white transition-all text-xs font-black uppercase">
                 Sair

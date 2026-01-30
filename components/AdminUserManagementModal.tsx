@@ -20,6 +20,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
   const [newPassword, setNewPassword] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const isSuperUser = SUPER_USER_IDS.includes(currentUserId);
 
@@ -31,7 +32,75 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
       setMessage(null);
       setNewPassword('');
     }
-  }, [isOpen]);
+  }, [isOpen, isSuperUser]);
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!isSuperUser) {
+      setMessage({ type: 'error', text: 'Acesso negado: apenas super admins podem excluir usuários.' });
+      return;
+    }
+    if (!userId) return;
+    if (SUPER_USER_IDS.includes(userId)) {
+      setMessage({ type: 'error', text: 'Não é permitido deletar um super admin.' });
+      return;
+    }
+    if (userId === currentUserId) {
+      setMessage({ type: 'error', text: 'Você não pode deletar o seu próprio usuário.' });
+      return;
+    }
+
+    const confirm = window.confirm('Confirma exclusão permanente deste usuário e todos os seus dados?');
+    if (!confirm) return;
+
+    setDeletingUserId(userId);
+    setActionLoading(true);
+    setMessage(null);
+
+    try {
+      console.log('Deletando dados do usuário:', userId);
+
+      const { error: votesError } = await supabase.from('player_votes').delete().or(`voter_id.eq.${userId},target_player_id.eq.${userId}`);
+      if (votesError) console.error('Erro ao deletar votos:', votesError);
+
+      const { error: matchPlayersError } = await supabase.from('match_players').delete().eq('player_id', userId);
+      if (matchPlayersError) console.error('Erro ao deletar match_players:', matchPlayersError);
+
+      const { error: commentsError } = await supabase.from('match_comments').delete().eq('player_id', userId);
+      if (commentsError) console.error('Erro ao deletar comentários:', commentsError);
+
+      const { error: statsError } = await supabase.from('player_stats').delete().eq('player_id', userId);
+      if (statsError) console.error('Erro ao deletar stats:', statsError);
+
+      const { data: deletedPlayer, error: delPlayerError } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', userId)
+        .select();
+
+      console.log('Resultado da deleção:', { deletedPlayer, delPlayerError });
+
+      if (delPlayerError) {
+        throw new Error(`Erro ao deletar jogador: ${delPlayerError.message}. Verifique as políticas RLS no Supabase.`);
+      }
+
+      if (!deletedPlayer || deletedPlayer.length === 0) {
+        throw new Error('Usuário não foi deletado. Verifique as políticas RLS (Row Level Security) da tabela players no Supabase.');
+      }
+
+      setMessage({
+        type: 'success',
+        text: 'Usuário removido com sucesso! Nota: O registro Auth permanece no Supabase e deve ser removido manualmente via Dashboard > Authentication se necessário.'
+      });
+
+      await loadPlayers();
+    } catch (err: any) {
+      console.error('Erro ao deletar usuário:', err);
+      setMessage({ type: 'error', text: err.message || 'Erro ao deletar usuário.' });
+    } finally {
+      setDeletingUserId(null);
+      setActionLoading(false);
+    }
+  };
 
   const loadPlayers = async () => {
     setLoading(true);
@@ -156,15 +225,31 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setResettingUserId(resettingUserId === p.id ? null : p.id)}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${resettingUserId === p.id
-                        ? 'bg-slate-700 text-white'
-                        : 'bg-emerald-600 text-slate-950 hover:bg-emerald-500'
-                        }`}
-                    >
-                      {resettingUserId === p.id ? 'Cancelar' : 'Alterar Senha'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setResettingUserId(resettingUserId === p.id ? null : p.id)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${resettingUserId === p.id
+                          ? 'bg-slate-700 text-white'
+                          : 'bg-emerald-600 text-slate-950 hover:bg-emerald-500'
+                          }`}
+                      >
+                        {resettingUserId === p.id ? 'Cancelar' : 'Alterar Senha'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(p.id)}
+                        disabled={actionLoading || deletingUserId === p.id || SUPER_USER_IDS.includes(p.id) || p.id === currentUserId}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+                          SUPER_USER_IDS.includes(p.id) || p.id === currentUserId
+                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                            : deletingUserId === p.id || actionLoading
+                            ? 'bg-red-600/60 text-white opacity-70'
+                            : 'bg-red-600 text-white hover:bg-red-500'
+                          }`}
+                        title={SUPER_USER_IDS.includes(p.id) ? 'Super admins não podem ser deletados' : p.id === currentUserId ? 'Você não pode deletar a si mesmo' : 'Deletar usuário'}
+                      >
+                        {deletingUserId === p.id ? 'Deletando...' : 'Deletar'}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Reset Form Section */}
