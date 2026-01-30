@@ -110,9 +110,17 @@ const App: React.FC = () => {
           if (matchRes) {
             const teamA = matchRes.players_team_a || [];
             const teamB = matchRes.players_team_b || [];
+            const allPlayerIds = [...teamA, ...teamB];
+
+            const { data: existingPlayers } = await supabase
+              .from('players')
+              .select('id')
+              .in('id', allPlayerIds);
+
+            const existingPlayerIds = new Set(existingPlayers?.map(p => p.id) || []);
 
             const userTeamIds = teamA.includes(userId) ? teamA : teamB.includes(userId) ? teamB : [];
-            const teammatesIds = userTeamIds.filter(id => id !== userId);
+            const teammatesIds = userTeamIds.filter(id => id !== userId && existingPlayerIds.has(id));
 
             if (teammatesIds.length > 0) {
               const { data: votes } = await supabase
@@ -122,7 +130,7 @@ const App: React.FC = () => {
                 .eq('voter_id', userId)
                 .in('target_player_id', teammatesIds);
 
-              const votedIds = new Set(votes?.map(v => v.target_player_id) || []);
+              const votedIds = new Set(votes?.map(v => v.target_player_id).filter(id => existingPlayerIds.has(id)) || []);
               hasPendingVotes = teammatesIds.some(tid => !votedIds.has(tid));
             }
           }

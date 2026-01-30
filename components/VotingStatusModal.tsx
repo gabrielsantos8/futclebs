@@ -23,6 +23,7 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
   const [loading, setLoading] = useState(false);
   const [players, setPlayers] = useState<PlayerVotingStatus[]>([]);
   const [matchDate, setMatchDate] = useState('');
+  const [completingVoteId, setCompletingVoteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -36,6 +37,45 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
       loadVotingStatus();
     }
   }, [isOpen, matchId, isAdmin]);
+
+  const handleForceCompleteVote = async (playerId: string) => {
+    if (!confirm('Tem certeza que deseja marcar a votação deste jogador como completa? Isso não pode ser desfeito.')) {
+      return;
+    }
+
+    setCompletingVoteId(playerId);
+    try {
+      const player = players.find(p => p.id === playerId);
+      if (!player || !player.missingVotes || player.missingVotes.length === 0) {
+        return;
+      }
+
+      const votesToInsert = player.missingVotes.map(targetId => ({
+        match_id: matchId,
+        voter_id: playerId,
+        target_player_id: targetId,
+        velocidade: 3,
+        finalizacao: 3,
+        passe: 3,
+        drible: 3,
+        defesa: 3,
+        fisico: 3
+      }));
+
+      const { error } = await supabase
+        .from('player_votes')
+        .insert(votesToInsert);
+
+      if (error) throw error;
+
+      await loadVotingStatus();
+    } catch (err) {
+      console.error('Erro ao completar votação:', err);
+      alert('Erro ao completar votação. Verifique o console.');
+    } finally {
+      setCompletingVoteId(null);
+    }
+  };
 
   const loadVotingStatus = async () => {
     setLoading(true);
@@ -77,6 +117,8 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
         return;
       }
 
+      const existingPlayerIds = new Set(playersData.map(p => p.id));
+
       const { data: votes } = await supabase
         .from('player_votes')
         .select('voter_id, target_player_id')
@@ -86,9 +128,9 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
         const isTeamA = teamA.includes(player.id);
         const team = isTeamA ? 'A' : teamB.includes(player.id) ? 'B' : null;
         const teammates = isTeamA ? teamA : teamB;
-        const teammatesIds = teammates.filter(id => id !== player.id);
+        const teammatesIds = teammates.filter(id => id !== player.id && existingPlayerIds.has(id));
 
-        const playerVotes = votes?.filter(v => v.voter_id === player.id) || [];
+        const playerVotes = votes?.filter(v => v.voter_id === player.id && existingPlayerIds.has(v.target_player_id)) || [];
         const votedIds = new Set(playerVotes.map(v => v.target_player_id));
         const missingVotes = teammatesIds.filter(id => !votedIds.has(id));
 
@@ -229,12 +271,25 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
                     </div>
                   </div>
 
-                  <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase ${
-                    player.hasCompleted
-                      ? 'bg-emerald-500/20 text-emerald-500'
-                      : 'bg-orange-500/20 text-orange-500'
-                  }`}>
-                    {player.hasCompleted ? 'Completo' : 'Pendente'}
+                  <div className="flex items-center gap-2">
+                    <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase ${
+                      player.hasCompleted
+                        ? 'bg-emerald-500/20 text-emerald-500'
+                        : 'bg-orange-500/20 text-orange-500'
+                    }`}>
+                      {player.hasCompleted ? 'Completo' : 'Pendente'}
+                    </div>
+
+                    {!player.hasCompleted && player.totalTeammates > 0 && isAdmin && (
+                      <button
+                        onClick={() => handleForceCompleteVote(player.id)}
+                        disabled={completingVoteId === player.id}
+                        className="px-3 py-1.5 rounded-lg font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Finalizar votação com notas médias (3)"
+                      >
+                        {completingVoteId === player.id ? 'Finalizando...' : 'Finalizar'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
