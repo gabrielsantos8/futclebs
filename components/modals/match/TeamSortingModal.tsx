@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase, Player, PlayerStats } from '../../../services/supabase.ts';
+import { calculateByPosition } from '@/utils/overall.utils.ts';
 
 interface TeamSortingModalProps {
   isOpen: boolean;
@@ -48,13 +49,13 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
         const allIds = [...existingResult.players_team_a, ...existingResult.players_team_b];
         const { data: playersData } = await supabase
           .from('players')
-          .select('*, player_stats(*)')
+          .select('*, player_stats(velocidade, finalizacao, passe, drible, defesa, fisico, esportividade)')
           .in('id', allIds);
 
         if (playersData) {
           const formattedPlayers: PlayerWithStats[] = playersData.map((p: any) => ({
             ...p,
-            stats: Array.isArray(p.player_stats) ? p.player_stats[0] : p.player_stats
+             stats: p.player_stats ? {...p.player_stats, overall: calculateByPosition(p, p.player_stats)} : null,
           }));
 
           const teamA = existingResult.players_team_a.map((id: string) => formattedPlayers.find(p => p.id === id)).filter(Boolean);
@@ -86,7 +87,7 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
 
       const players: PlayerWithStats[] = roster.map((r: any) => ({
         ...r.players,
-        stats: Array.isArray(r.players.player_stats) ? r.players.player_stats[0] : r.players.player_stats
+         stats: r.players.player_stats ? {...r.players.player_stats, overall: calculateByPosition(r.players, r.players.player_stats)} : null,
       }));
 
       sortTeams(players);
@@ -125,7 +126,7 @@ export const TeamSortingModal: React.FC<TeamSortingModalProps> = ({ isOpen, onCl
     };
 
     // Função para determinar a posição principal de um jogador
-    const getPrimaryPosition = (player: PlayerWithStats): string | null => {
+    const getPrimaryPosition = (player: PlayerWithStats): String | null => {
       if (!player.positions || player.positions.length === 0) return null;
       // Se tiver 2 posições, prioriza a primeira
       return player.positions[0];
@@ -403,7 +404,7 @@ const TeamColumn = ({
 }) => {
   const gks = players.filter(p => p.is_goalkeeper).length;
   const field = players.length - gks;
-  const totalOvr = Math.round(players.reduce((acc, p) => acc + (p.stats?.overall || 0), 0) * 20);
+  const totalOvr = Math.round(players.reduce((acc, p) => acc + (p.stats?.overall || 0), 0));
 
   return (
     <div className="space-y-4 relative z-10 flex flex-col">
@@ -496,7 +497,7 @@ const TeamColumn = ({
                               text-emerald-400 font-black text-[10px] tabular-nums
                               group-hover:bg-emerald-500/10 group-hover:border-emerald-500/25 transition-all"
                   >
-                    {Math.round((p.stats?.overall || 0) * 20)}
+                    {Math.round((p.stats?.overall || 0))}
                   </div>
 
                   {!isLocked && (

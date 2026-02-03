@@ -43,7 +43,7 @@ export const RankingTab: React.FC<RankingTabProps> = ({ onPlayerClick }) => {
         `);
 
       if (error) throw error;
-      console.log('Data:', data);
+     
 
       const players: RankingPlayer[] = (data as any[]).map(p => ({
         
@@ -56,8 +56,6 @@ export const RankingTab: React.FC<RankingTabProps> = ({ onPlayerClick }) => {
       }));
 
       setAllPlayers(players);
-
-      console.log('Players fetched for ranking:', players);
 
       // Ordenar por Overall para os Top 3
       const sortedField = [...players]
