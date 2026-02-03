@@ -19,18 +19,18 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   return (
     <div
       onClick={onOpenStats}
-      className="group relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-[2.5rem] shadow-2xl cursor-pointer active:scale-95 transition-all"
+      className="group relative overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-800 p-4 sm:p-6 rounded-[2.5rem] shadow-2xl cursor-pointer active:scale-95 transition-all"
     >
-      <div className="flex justify-between items-center relative z-10">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+        <div className="flex-1 w-full sm:w-auto">
+          <div className="flex items-center gap-2 mb-2">
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenAvatar();
               }}
-              className="relative group/avatar"
+              className="relative group/avatar shrink-0"
               title="Editar avatar"
             >
               <div className="relative">
@@ -57,40 +57,44 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               </div>
             </button>
 
-            <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest">Seu Nível</p>
-            <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[8px] font-black text-white uppercase border border-white/10 tracking-widest">
-              {userProfile.is_goalkeeper ? 'Goleiro' : 'Linha'}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Seu Nível</p>
+              <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[8px] font-black text-white uppercase border border-white/10 tracking-widest whitespace-nowrap">
+                {userProfile.is_goalkeeper ? 'Goleiro' : 'Linha'}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-4xl sm:text-5xl font-black text-white tabular-nums">
               {userStats?.overall ? Math.round(Number(userStats.overall) * 20) : '--'}
             </span>
-            <span className="text-emerald-300 font-bold">OVR</span>
+            <span className="text-emerald-300 font-bold text-lg">OVR</span>
           </div>
 
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenPositions();
               }}
-              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 tracking-widest transition-all flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 tracking-widest transition-all flex items-center gap-1.5 whitespace-nowrap"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {userProfile.positions && userProfile.positions.length > 0
-                ? userProfile.positions.join(' • ')
-                : 'Definir Posições'}
+              <span className="truncate max-w-[150px] sm:max-w-none">
+                {userProfile.positions && userProfile.positions.length > 0
+                  ? userProfile.positions.join(' • ')
+                  : 'Definir Posições'}
+              </span>
             </button>
           </div>
         </div>
 
-        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 backdrop-blur-md group-hover:scale-110 transition-transform">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 backdrop-blur-md group-hover:scale-110 transition-transform shrink-0 self-end sm:self-auto">
+          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>

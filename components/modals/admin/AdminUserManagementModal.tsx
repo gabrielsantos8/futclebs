@@ -206,7 +206,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                   key={p.id}
                   className={`bg-slate-800/30 border rounded-2xl transition-all overflow-hidden ${resettingUserId === p.id ? 'border-emerald-500' : 'border-slate-700/50 hover:border-slate-600'}`}
                 >
-                  <div className="p-4 flex items-center justify-between">
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3 overflow-hidden">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0 ${p.is_goalkeeper ? 'bg-orange-500/20 text-orange-500 border border-orange-500/20' : 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20'}`}>
                         {p.avatar ? (
@@ -217,7 +217,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                           </span>
                         )}
                       </div>
-                      <div className="overflow-hidden">
+                      <div className="overflow-hidden flex-1">
                         <p className="text-sm font-bold text-white truncate">{p.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
@@ -226,7 +226,7 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                         </div>
                         {/* Posições do jogador */}
                         {p.positions && p.positions.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1.5">
+                          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                             {p.positions.map((pos) => (
                               <span
                                 key={pos}
@@ -242,27 +242,31 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:shrink-0">
                       <button
                         onClick={() => setEditingPositionsUserId(p.id)}
-                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all bg-blue-600 text-white hover:bg-blue-500"
+                        className="px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all bg-blue-600 text-white hover:bg-blue-500 whitespace-nowrap flex items-center justify-center gap-1.5"
                         title="Editar posições"
                       >
-                        📍 Posições
+                        <span>📍</span>
+                        <span className="hidden sm:inline">Posições</span>
+                        <span className="sm:hidden">Editar Posições</span>
                       </button>
                       <button
                         onClick={() => setResettingUserId(resettingUserId === p.id ? null : p.id)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${resettingUserId === p.id
+                        className={`px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${resettingUserId === p.id
                           ? 'bg-slate-700 text-white'
                           : 'bg-emerald-600 text-slate-950 hover:bg-emerald-500'
                           }`}
                       >
-                        {resettingUserId === p.id ? 'Cancelar' : 'Alterar Senha'}
+                        <span>{resettingUserId === p.id ? '✕' : '🔑'}</span>
+                        <span className="hidden sm:inline">{resettingUserId === p.id ? 'Cancelar' : 'Alterar Senha'}</span>
+                        <span className="sm:hidden">{resettingUserId === p.id ? 'Cancelar Alteração' : 'Redefinir Senha'}</span>
                       </button>
                       <button
                         onClick={() => handleDeleteUser(p.id)}
                         disabled={actionLoading || deletingUserId === p.id || SUPER_ADMIN_IDS.includes(p.id) || p.id === currentUserId}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+                        className={`px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
                           SUPER_ADMIN_IDS.includes(p.id) || p.id === currentUserId
                             ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                             : deletingUserId === p.id || actionLoading
@@ -271,7 +275,9 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                           }`}
                         title={SUPER_ADMIN_IDS.includes(p.id) ? 'Super admins não podem ser deletados' : p.id === currentUserId ? 'Você não pode deletar a si mesmo' : 'Deletar usuário'}
                       >
-                        {deletingUserId === p.id ? 'Deletando...' : 'Deletar'}
+                        <span>{deletingUserId === p.id ? '⏳' : '🗑️'}</span>
+                        <span className="hidden sm:inline">{deletingUserId === p.id ? 'Deletando...' : 'Deletar'}</span>
+                        <span className="sm:hidden">{deletingUserId === p.id ? 'Excluindo...' : 'Excluir Usuário'}</span>
                       </button>
                     </div>
                   </div>
