@@ -29,7 +29,8 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
     passe: 3,
     drible: 3,
     defesa: 3,
-    fisico: 3
+    fisico: 3,
+    esportividade: 5
   });
 
   useEffect(() => {
@@ -117,7 +118,8 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
         passe: currentRatings.passe,
         drible: currentRatings.drible,
         defesa: currentRatings.defesa,
-        fisico: currentRatings.fisico
+        fisico: currentRatings.fisico,
+        esportividade: currentRatings.esportividade
       };
 
       const { error } = await supabase.from('player_votes').insert({
@@ -137,7 +139,8 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
           passe: 3,
           drible: 3,
           defesa: 3,
-          fisico: 3
+          fisico: 3,
+          esportividade: 5
         });
         // Scroll to top of the content area
         const contentArea = document.getElementById('vote-content-area');
@@ -179,7 +182,8 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
         passe: 3,
         drible: 3,
         defesa: 3,
-        fisico: 3
+        fisico: 3,
+        esportividade: 5
       }));
 
       const { error } = await supabase
@@ -203,16 +207,17 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
   const currentPlayer = playersToVote[currentIndex];
 
   const allAttributes = [
-    { key: 'velocidade', label: 'Velocidade', icon: '⚡' },
-    { key: 'finalizacao', label: 'Finalização', icon: '🎯' },
-    { key: 'passe', label: 'Passe', icon: '⚽' },
-    { key: 'drible', label: 'Drible', icon: '👟' },
-    { key: 'defesa', label: 'Defesa', icon: '🛡️' },
-    { key: 'fisico', label: 'Físico', icon: '💪' },
+    { key: 'velocidade', label: 'Velocidade', icon: '⚡', description: 'Ritmo, aceleração e deslocamento' },
+    { key: 'finalizacao', label: 'Finalização', icon: '🎯', description: 'Precisão e potência nos chutes' },
+    { key: 'passe', label: 'Passe', icon: '⚽', description: 'Qualidade e visão de jogo' },
+    { key: 'drible', label: 'Drible', icon: '👟', description: 'Habilidade com a bola nos pés' },
+    { key: 'defesa', label: 'Defesa', icon: '🛡️', description: 'Marcação e interceptações' },
+    { key: 'fisico', label: 'Físico', icon: '💪', description: 'Força, resistência e imposição' },
+    { key: 'esportividade', label: 'Esportividade', icon: '🤝', description: 'Fair play, comportamento, chegadas e lesões' },
   ] as const;
 
   const visibleAttributes = currentPlayer?.is_goalkeeper
-    ? allAttributes.filter(attr => attr.key === 'passe' || attr.key === 'defesa')
+    ? allAttributes.filter(attr => attr.key === 'passe' || attr.key === 'defesa' || attr.key === 'esportividade')
     : allAttributes;
 
   return (
@@ -289,7 +294,8 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
                     key={attr.key}
                     label={attr.label}
                     icon={attr.icon}
-                    value={currentRatings[attr.key as keyof typeof currentRatings]} 
+                    description={attr.description}
+                    value={currentRatings[attr.key as keyof typeof currentRatings]}
                     onChange={v => setCurrentRatings(r => ({...r, [attr.key]: v}))} 
                   />
                 ))}
@@ -336,12 +342,15 @@ export const PlayerVoteModal: React.FC<PlayerVoteModalProps> = ({ isOpen, onClos
   );
 };
 
-const RatingRow: React.FC<{ label: string, icon: string, value: number, onChange: (v: number) => void }> = ({ label, icon, value, onChange }) => (
+const RatingRow: React.FC<{ label: string, icon: string, description: string, value: number, onChange: (v: number) => void }> = ({ label, icon, description, value, onChange }) => (
   <div className="flex flex-col gap-3 group">
     <div className="flex justify-between items-center px-1">
-      <div className="flex items-center gap-2">
-        <span className="text-lg">{icon}</span>
-        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest group-focus-within:text-emerald-500 transition-colors">{label}</span>
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{icon}</span>
+          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest group-focus-within:text-emerald-500 transition-colors">{label}</span>
+        </div>
+        <p className="text-[10px] text-slate-500 font-medium ml-7">{description}</p>
       </div>
       <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1 rounded-lg border border-slate-700/30">
         <span className="text-[11px] font-black text-emerald-500 tabular-nums">{value * 20} pts</span>

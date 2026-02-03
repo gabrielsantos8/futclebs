@@ -39,12 +39,13 @@ export const MiniStatsModal: React.FC<MiniStatsModalProps> = ({
       { label: 'DRI', value: (stats?.drible || 0) * SCALING, color: 'bg-yellow-500', key: 'DRI' },
       { label: 'DEF', value: (stats?.defesa || 0) * SCALING, color: 'bg-slate-500', key: 'DEF' },
       { label: 'FIS', value: (stats?.fisico || 0) * SCALING, color: 'bg-orange-500', key: 'FIS' },
+      { label: 'ESP', value: (stats?.esportividade || 0) * SCALING, color: 'bg-purple-500', key: 'ESP' },
     ],
     [stats]
   );
 
   const statItems = useMemo(
-    () => (isGoalkeeper ? allStatItems.filter((i) => i.key === 'PAS' || i.key === 'DEF') : allStatItems),
+    () => (isGoalkeeper ? allStatItems.filter((i) => i.key === 'PAS' || i.key === 'DEF' || i.key === 'ESP') : allStatItems),
     [allStatItems, isGoalkeeper]
   );
 

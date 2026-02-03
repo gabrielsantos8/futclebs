@@ -98,8 +98,8 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
             if (matchVotes.length > 0) {
               const avgs = matchVotes.map(v => {
                 const attrs = isGoalkeeper 
-                  ? [v.passe, v.defesa]
-                  : [v.velocidade, v.finalizacao, v.passe, v.drible, v.defesa, v.fisico];
+                  ? [v.passe, v.defesa, v.esportividade]
+                  : [v.velocidade, v.finalizacao, v.passe, v.drible, v.defesa, v.fisico, v.esportividade];
                 const valid = attrs.filter(val => val > 0);
                 return (valid.reduce((a, b) => a + b, 0) / (valid.length || 1)) * 20;
               });
@@ -142,10 +142,11 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
     { label: 'Drible', value: (stats?.drible || 0) * SCALING, color: 'bg-yellow-500', key: 'DRI' },
     { label: 'Defesa', value: (stats?.defesa || 0) * SCALING, color: 'bg-slate-500', key: 'DEF' },
     { label: 'Físico', value: (stats?.fisico || 0) * SCALING, color: 'bg-orange-500', key: 'FIS' },
+    { label: 'Esportividade', value: (stats?.esportividade || 0) * SCALING, color: 'bg-purple-500', key: 'ESP' },
   ];
 
   const statItems = isGoalkeeper 
-    ? allStatItems.filter(item => item.key === 'PAS' || item.key === 'DEF')
+    ? allStatItems.filter(item => item.key === 'PAS' || item.key === 'DEF' || item.key === 'ESP')
     : allStatItems;
 
   // Preparar dados para o gráfico baseados no histórico real (máximo 7 pontos para não poluir)

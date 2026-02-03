@@ -24,6 +24,7 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
   const [players, setPlayers] = useState<PlayerVotingStatus[]>([]);
   const [matchDate, setMatchDate] = useState('');
   const [completingVoteId, setCompletingVoteId] = useState<string | null>(null);
+  const [resettingPlayerId, setResettingPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -59,7 +60,8 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
         passe: 3,
         drible: 3,
         defesa: 3,
-        fisico: 3
+        fisico: 3,
+        esportividade: 5
       }));
 
       const { error } = await supabase
@@ -74,6 +76,47 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
       alert('Erro ao completar votação. Verifique o console.');
     } finally {
       setCompletingVoteId(null);
+    }
+  };
+
+  const handleResetPlayerVotes = async (playerId: string) => {
+    // Validação de super admin
+    if (!isAdmin) {
+      alert('❌ Acesso negado!\n\nApenas super admins podem resetar votos.');
+      return;
+    }
+
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+
+    const confirmText = `🔄 Resetar Votos de ${player.name}\n\nIsso irá:\n❌ Deletar TODOS os votos FEITOS por ${player.name} nesta partida\n✅ Permitir que ele vote novamente do zero\n✅ Manter os votos que ele RECEBEU de outros jogadores\n\nVotos atuais: ${player.votedCount}/${player.totalTeammates}\n\nTem certeza que deseja continuar?`;
+
+    if (!confirm(confirmText)) {
+      return;
+    }
+
+    setResettingPlayerId(playerId);
+    try {
+      // Deletar APENAS os votos FEITOS por este jogador (voter_id)
+      const { error } = await supabase
+        .from('player_votes')
+        .delete()
+        .eq('match_id', matchId)
+        .eq('voter_id', playerId);
+
+      if (error) {
+        console.error('Erro ao resetar votos:', error);
+        throw new Error(`Erro ao deletar votos: ${error.message}`);
+      }
+
+      await loadVotingStatus();
+
+      alert(`✅ Votos de ${player.name} resetados!\n\n${player.votedCount} voto(s) deletados.\n${player.name} pode votar novamente.`);
+    } catch (err: any) {
+      console.error('Erro ao resetar votos:', err);
+      alert(`❌ Erro ao resetar votos: ${err?.message || 'Verifique o console'}`);
+    } finally {
+      setResettingPlayerId(null);
     }
   };
 
@@ -271,8 +314,8 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase flex-1 sm:flex-none text-center ${
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                    <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase text-center shrink-0 ${
                       player.hasCompleted
                         ? 'bg-emerald-500/20 text-emerald-500'
                         : 'bg-orange-500/20 text-orange-500'
@@ -280,16 +323,29 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
                       {player.hasCompleted ? 'Completo' : 'Pendente'}
                     </div>
 
-                    {!player.hasCompleted && player.totalTeammates > 0 && isAdmin && (
-                      <button
-                        onClick={() => handleForceCompleteVote(player.id)}
-                        disabled={completingVoteId === player.id}
-                        className="px-3 py-1.5 rounded-lg font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-1 sm:flex-none"
-                        title="Finalizar votação com notas médias (3)"
-                      >
-                        {completingVoteId === player.id ? 'Finalizando...' : 'Finalizar'}
-                      </button>
-                    )}
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      {!player.hasCompleted && player.totalTeammates > 0 && isAdmin && (
+                        <button
+                          onClick={() => handleForceCompleteVote(player.id)}
+                          disabled={completingVoteId === player.id || resettingPlayerId === player.id}
+                          className="px-3 py-1.5 rounded-lg font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-1 sm:flex-none"
+                          title="Finalizar votação com notas médias (3)"
+                        >
+                          {completingVoteId === player.id ? '⏳' : '✓ Finalizar'}
+                        </button>
+                      )}
+
+                      {isAdmin && player.votedCount > 0 && (
+                        <button
+                          onClick={() => handleResetPlayerVotes(player.id)}
+                          disabled={resettingPlayerId === player.id || completingVoteId === player.id}
+                          className="px-3 py-1.5 rounded-lg font-black text-[10px] uppercase bg-red-600 hover:bg-red-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-1 sm:flex-none"
+                          title="Resetar votos - jogador pode votar novamente"
+                        >
+                          {resettingPlayerId === player.id ? '⏳' : '🔄 Reset'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

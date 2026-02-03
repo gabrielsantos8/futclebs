@@ -20,6 +20,7 @@ interface DetailedVote {
   drible: number;
   defesa: number;
   fisico: number;
+  esportividade: number;
   average: number;
 }
 
@@ -114,9 +115,9 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                 
                 const individualVotes: DetailedVote[] = playerVotes.map(v => {
                   const attrs = player.is_goalkeeper 
-                    ? [v.passe, v.defesa]
-                    : [v.velocidade, v.finalizacao, v.passe, v.drible, v.defesa, v.fisico];
-                  
+                    ? [v.passe, v.defesa, v.esportividade]
+                    : [v.velocidade, v.finalizacao, v.passe, v.drible, v.defesa, v.fisico, v.esportividade];
+
                   const validAttrs = attrs.filter(val => val > 0);
                   const avg = validAttrs.reduce((s, val) => s + val, 0) / (validAttrs.length || 1);
                   
@@ -129,6 +130,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({ isOpen, on
                     drible: v.drible,
                     defesa: v.defesa,
                     fisico: v.fisico,
+                    esportividade: v.esportividade,
                     average: avg * 20
                   };
                 });
