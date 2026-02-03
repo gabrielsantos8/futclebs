@@ -228,15 +228,15 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
             players.map(player => (
               <div
                 key={player.id}
-                className={`p-4 rounded-2xl border transition-all ${
+                className={`p-3 sm:p-4 rounded-2xl border transition-all ${
                   player.hasCompleted
                     ? 'bg-emerald-500/5 border-emerald-500/20'
                     : 'bg-orange-500/5 border-orange-500/20'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
                       player.team === 'A' 
                         ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                         : 'bg-red-500/20 text-red-400 border border-red-500/30'
@@ -245,10 +245,10 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-white font-bold text-sm truncate">{player.name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-white font-bold text-sm truncate max-w-[150px] sm:max-w-none">{player.name}</h3>
                         {player.is_goalkeeper && (
-                          <span className="px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded text-[8px] font-black uppercase">
+                          <span className="px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded text-[8px] font-black uppercase shrink-0">
                             GOL
                           </span>
                         )}
@@ -271,8 +271,8 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase ${
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase flex-1 sm:flex-none text-center ${
                       player.hasCompleted
                         ? 'bg-emerald-500/20 text-emerald-500'
                         : 'bg-orange-500/20 text-orange-500'
@@ -284,7 +284,7 @@ export const VotingStatusModal: React.FC<VotingStatusModalProps> = ({ isOpen, on
                       <button
                         onClick={() => handleForceCompleteVote(player.id)}
                         disabled={completingVoteId === player.id}
-                        className="px-3 py-1.5 rounded-lg font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1.5 rounded-lg font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-1 sm:flex-none"
                         title="Finalizar votação com notas médias (3)"
                       >
                         {completingVoteId === player.id ? 'Finalizando...' : 'Finalizar'}

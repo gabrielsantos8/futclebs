@@ -156,7 +156,7 @@ export const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({
 
   const maxVal = 100;
   const chartHeight = 120;
-  const chartWidth = 400;
+  const chartWidth = 300;
 
   const points = chartData.length > 1 
     ? chartData.map((d, i) => {
