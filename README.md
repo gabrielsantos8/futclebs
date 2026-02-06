@@ -93,14 +93,37 @@ Inspirado em dashboards esportivos modernos.
 ## 📂 Estrutura do Projeto
 
 ```bash
-src/
-├── app/
-│   ├── dashboard/
-│   ├── auth/
-│   └── ranking/
-├── components/
-├── hooks/
+futclebs/
+├── App.tsx                 # Componente principal
+├── components/             # Componentes React
 ├── services/
-│   └── supabase.ts
-├── styles/
-└── types/
+│   └── supabase.ts        # Configuração do Supabase
+├── supabase/              # Políticas e migrations do banco
+│   ├── rls_policies.sql   # Políticas de Row Level Security
+│   └── README.md          # Documentação do banco de dados
+└── QUICK_FIX_RLS.md       # Guia rápido para corrigir erro RLS
+```
+
+---
+
+## 🗄️ Configuração do Banco de Dados
+
+O FutClebs utiliza **Supabase** com políticas de Row Level Security (RLS) para controlar o acesso aos dados.
+
+### Políticas RLS Necessárias
+
+Se você estiver configurando um novo projeto Supabase, é necessário aplicar as políticas RLS para o funcionamento correto das funcionalidades de super admin:
+
+1. Acesse o [Supabase Dashboard](https://supabase.com/dashboard)
+2. Navegue até **SQL Editor**
+3. Execute o arquivo `supabase/rls_policies.sql`
+
+Para mais detalhes, consulte:
+- 📖 `/supabase/README.md` - Documentação completa
+- ⚡ `/QUICK_FIX_RLS.md` - Guia rápido de resolução
+
+### Super Admins
+
+O sistema possui dois níveis de permissão:
+- **Super Admin** (2 usuários específicos): Acesso total, incluindo finalizar votações e deletar usuários
+- **Admin Normal**: Criar e gerenciar partidas
