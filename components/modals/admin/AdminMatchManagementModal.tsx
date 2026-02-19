@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, Player, PlayerStats } from '../../../services/supabase.ts';
 
@@ -7,6 +6,8 @@ interface AdminMatchManagementModalProps {
   onClose: () => void;
   matchId: string;
   onRefresh: () => void;
+  isAdmin?: boolean;
+  isSuperAdmin?: boolean;
 }
 
 interface PlayerWithStats extends Player {
@@ -18,6 +19,7 @@ export const AdminMatchManagementModal: React.FC<AdminMatchManagementModalProps>
   onClose,
   matchId,
   onRefresh
+  , isAdmin = false, isSuperAdmin = false
 }) => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -29,6 +31,9 @@ export const AdminMatchManagementModal: React.FC<AdminMatchManagementModalProps>
   const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<{title: string, msg: string} | null>(null);
+  const [showExceedConfirm, setShowExceedConfirm] = useState(false);
+  const [pendingAdds, setPendingAdds] = useState<string[]>([]);
+  const [pendingNewFieldCount, setPendingNewFieldCount] = useState(0);
 
   const MAX_GK = 2;
   const MAX_FIELD = 12;
@@ -79,7 +84,14 @@ export const AdminMatchManagementModal: React.FC<AdminMatchManagementModalProps>
     const newField = adding.length - newGks;
 
     if (currentGk + newGks > MAX_GK) return setError({title: "Limite Goleiros", msg: "Apenas 2 goleiros permitidos."});
-    if (currentField + newField > MAX_FIELD) return setError({title: "Limite Linha", msg: "Apenas 12 jogadores de linha permitidos."});
+    if (currentField + newField > MAX_FIELD) {
+      if (!isAdmin && !isSuperAdmin) return setError({title: "Limite Linha", msg: `Apenas ${MAX_FIELD} jogadores de linha permitidos.`});
+
+      setPendingAdds(adding.map(p => p.id));
+      setPendingNewFieldCount(newField);
+      setShowExceedConfirm(true);
+      return;
+    }
 
     setActionLoading(true);
     try {
@@ -88,6 +100,27 @@ export const AdminMatchManagementModal: React.FC<AdminMatchManagementModalProps>
       await loadData();
       onRefresh();
     } finally { setActionLoading(false); }
+  };
+
+  const confirmExceedAdd = async () => {
+    setShowExceedConfirm(false);
+    if (pendingAdds.length === 0) return;
+    setActionLoading(true);
+    try {
+      const inserts = pendingAdds.map(pid => ({ match_id: matchId, player_id: pid }));
+      await supabase.from('match_players').insert(inserts);
+      await loadData();
+      onRefresh();
+      setPendingAdds([]);
+      setPendingNewFieldCount(0);
+      setSelectedToAdd(new Set());
+    } finally { setActionLoading(false); }
+  };
+
+  const cancelExceedAdd = () => {
+    setShowExceedConfirm(false);
+    setPendingAdds([]);
+    setPendingNewFieldCount(0);
   };
 
   const toggleSelect = (id: string, set: Set<string>, setter: (s: Set<string>) => void) => {
@@ -102,107 +135,107 @@ export const AdminMatchManagementModal: React.FC<AdminMatchManagementModalProps>
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-0 md:p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
       <div className="w-full h-full md:h-auto md:max-w-4xl bg-slate-950 md:bg-slate-900 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden flex flex-col max-h-screen md:max-h-[85vh] shadow-2xl">
         
-        {/* Header com Status Consolidado */}
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/80">
-          <div>
-            <h2 className="text-xl font-black text-white uppercase tracking-tight">Gestão da Lista</h2>
-            <div className="flex gap-2 mt-2">
-              <div className={`px-3 py-1 rounded-lg border flex items-center gap-2 transition-all ${currentField >= 12 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
-                <span className="text-[10px] font-black uppercase">Linha</span>
-                <span className="text-xs font-black">{currentField}/12</span>
-              </div>
-              <div className={`px-3 py-1 rounded-lg border flex items-center gap-2 transition-all ${currentGk >= 2 ? 'bg-orange-500 text-slate-950 border-orange-400' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
-                <span className="text-[10px] font-black uppercase">Goleiros</span>
-                <span className="text-xs font-black">{currentGk}/2</span>
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-3 hover:bg-slate-800 rounded-2xl transition-colors text-slate-400 hover:text-white">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        {/* Tabs Estilizadas */}
-        <div className="flex border-b border-slate-800 bg-slate-950/50 p-2 gap-2">
-          <button 
-            onClick={() => setActiveTab('confirmed')} 
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'confirmed' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-slate-500 hover:bg-slate-800'}`}
-          >
-            Confirmados ({confirmedPlayers.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('available')} 
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'available' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:bg-slate-800'}`}
-          >
-            Disponíveis ({availablePlayers.length})
-          </button>
-        </div>
-
-        {/* Área de Conteúdo */}
-        <div className="flex-1 overflow-hidden flex flex-col relative bg-slate-950/30">
-          {activeTab === 'confirmed' ? (
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                {confirmedPlayers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 opacity-20">
-                    <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    <p className="font-black uppercase text-xs">Nenhum convocado</p>
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/80">
+              <div>
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">Gestão da Lista</h2>
+                <div className="flex gap-2 mt-2">
+                  <div className={`px-3 py-1 rounded-lg border flex items-center gap-2 transition-all ${currentField >= MAX_FIELD && !isAdmin && !isSuperAdmin ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
+                    <span className="text-[10px] font-black uppercase">Linha</span>
+                    <span className="text-xs font-black">{currentField}/{MAX_FIELD}</span>
+                    { (isAdmin || isSuperAdmin) && (
+                      <span className="ml-2 text-[9px] px-2 py-0.5 bg-slate-700/50 rounded text-slate-300 font-bold">ADMIN</span>
+                    )}
                   </div>
-                ) : (
-                  confirmedPlayers.map(p => (
-                    <PlayerManagementRow 
-                      key={p.id} 
-                      player={p} 
-                      selected={selectedToRemove.has(p.id)} 
-                      onToggle={() => toggleSelect(p.id, selectedToRemove, setSelectedToRemove)} 
-                      theme="red" 
-                    />
-                  ))
-                )}
-              </div>
-              {selectedToRemove.size > 0 && (
-                <div className="p-6 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 animate-in slide-in-from-bottom-5">
-                  <button onClick={handleBulkRemove} disabled={actionLoading} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase rounded-2xl transition-all shadow-xl shadow-red-600/20 active:scale-95">
-                    Remover {selectedToRemove.size} Jogadores da Partida
-                  </button>
+                   <div className={`px-3 py-1 rounded-lg border flex items-center gap-2 transition-all ${currentGk >= 2 ? 'bg-orange-500 text-slate-950 border-orange-400' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
+                     <span className="text-[10px] font-black uppercase">Goleiros</span>
+                     <span className="text-xs font-black">{currentGk}/2</span>
+                   </div>
+                 </div>
+               </div>
+               <button onClick={onClose} className="p-3 hover:bg-slate-800 rounded-2xl transition-colors text-slate-400 hover:text-white">
+                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+               </button>
+             </div>
+
+            <div className="flex border-b border-slate-800 bg-slate-950/50 p-2 gap-2">
+              <button
+                onClick={() => setActiveTab('confirmed')}
+                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'confirmed' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-slate-500 hover:bg-slate-800'}`}
+              >
+                Confirmados ({confirmedPlayers.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('available')}
+                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'available' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:bg-slate-800'}`}
+              >
+                Disponíveis ({availablePlayers.length})
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex flex-col relative bg-slate-950/30">
+              {activeTab === 'confirmed' ? (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                    {confirmedPlayers.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                        <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        <p className="font-black uppercase text-xs">Nenhum convocado</p>
+                      </div>
+                    ) : (
+                      confirmedPlayers.map(p => (
+                        <PlayerManagementRow
+                          key={p.id}
+                          player={p}
+                          selected={selectedToRemove.has(p.id)}
+                          onToggle={() => toggleSelect(p.id, selectedToRemove, setSelectedToRemove)}
+                          theme="red"
+                        />
+                      ))
+                    )}
+                  </div>
+                  {selectedToRemove.size > 0 && (
+                    <div className="p-6 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 animate-in slide-in-from-bottom-5">
+                      <button onClick={handleBulkRemove} disabled={actionLoading} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase rounded-2xl transition-all shadow-xl shadow-red-600/20 active:scale-95">
+                        Remover {selectedToRemove.size} Jogadores da Partida
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="p-4 border-b border-slate-800/50">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Filtrar por nome do craque..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-2xl px-12 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
+                      />
+                      <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                    {availablePlayers.map(p => (
+                      <PlayerManagementRow
+                        key={p.id}
+                        player={p}
+                        selected={selectedToAdd.has(p.id)}
+                        onToggle={() => toggleSelect(p.id, selectedToAdd, setSelectedToAdd)}
+                        theme="emerald"
+                      />
+                    ))}
+                  </div>
+                  {selectedToAdd.size > 0 && (
+                    <div className="p-6 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 animate-in slide-in-from-bottom-5">
+                      <button onClick={handleBulkAdd} disabled={actionLoading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95">
+                        Adicionar {selectedToAdd.size} Jogadores à Lista
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="p-4 border-b border-slate-800/50">
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    placeholder="Filtrar por nome do craque..." 
-                    value={searchQuery} 
-                    onChange={e => setSearchQuery(e.target.value)} 
-                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-2xl px-12 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-600" 
-                  />
-                  <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                {availablePlayers.map(p => (
-                  <PlayerManagementRow 
-                    key={p.id} 
-                    player={p} 
-                    selected={selectedToAdd.has(p.id)} 
-                    onToggle={() => toggleSelect(p.id, selectedToAdd, setSelectedToAdd)} 
-                    theme="emerald" 
-                  />
-                ))}
-              </div>
-              {selectedToAdd.size > 0 && (
-                <div className="p-6 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 animate-in slide-in-from-bottom-5">
-                  <button onClick={handleBulkAdd} disabled={actionLoading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95">
-                    Adicionar {selectedToAdd.size} Jogadores à Lista
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {error && (
@@ -214,6 +247,22 @@ export const AdminMatchManagementModal: React.FC<AdminMatchManagementModalProps>
             <h3 className="text-white font-black uppercase mb-2 tracking-tight">{error.title}</h3>
             <p className="text-slate-400 text-xs mb-8 leading-relaxed font-medium">{error.msg}</p>
             <button onClick={() => setError(null)} className="w-full py-4 bg-white text-slate-950 font-black text-[10px] uppercase rounded-2xl hover:bg-slate-200 transition-colors">Entendi</button>
+          </div>
+        </div>
+      )}
+
+      {showExceedConfirm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] text-center w-full max-w-md shadow-2xl animate-in zoom-in">
+            <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400 border border-amber-500/20">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+            </div>
+            <h3 className="text-white font-black uppercase mb-2 tracking-tight">Exceder limite de Linha</h3>
+            <p className="text-slate-400 text-xs mb-4 leading-relaxed font-medium">Após a inclusão haverá {currentField + pendingNewFieldCount} jogadores de linha (limite padrão: {MAX_FIELD}). Deseja prosseguir mesmo assim?</p>
+            <div className="flex gap-3">
+              <button onClick={confirmExceedAdd} disabled={actionLoading} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-2xl transition-all">Sim, confirmar</button>
+              <button onClick={cancelExceedAdd} disabled={actionLoading} className="flex-1 py-3 bg-white hover:bg-slate-200 text-slate-900 font-black text-xs uppercase rounded-2xl transition-all">Cancelar</button>
+            </div>
           </div>
         </div>
       )}
@@ -237,7 +286,6 @@ const PlayerManagementRow: React.FC<PlayerManagementRowProps> = ({ player, selec
         : 'bg-slate-800/30 border-slate-700/30 hover:border-slate-600 hover:bg-slate-800/50'
     }`}
   >
-    {/* Checkbox */}
     <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
       selected 
         ? (theme === 'emerald' ? 'bg-emerald-500 border-emerald-500' : 'bg-red-500 border-red-500') 
@@ -246,7 +294,6 @@ const PlayerManagementRow: React.FC<PlayerManagementRowProps> = ({ player, selec
       {selected && <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>}
     </div>
 
-    {/* Info Jogador */}
     <div className="flex-1 min-w-0">
       <span className={`text-sm font-black block truncate transition-colors ${selected ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
         {player.name}
@@ -256,7 +303,6 @@ const PlayerManagementRow: React.FC<PlayerManagementRowProps> = ({ player, selec
       </span>
     </div>
 
-    {/* Badge de Posição - O GRANDE DESTAQUE */}
     <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 shrink-0 ${
       player.is_goalkeeper 
         ? 'bg-orange-500/20 border-orange-500/30 text-orange-500' 
