@@ -98,6 +98,8 @@ export const AllModals: React.FC<AllModalsProps> = ({
         onClose={() => modals.closeModal('isAdminManagementOpen')}
         matchId={modals.selectedMatchId || ''}
         onRefresh={() => onFetchMatches(userProfile.id)}
+        isAdmin={userProfile.is_admin}
+        isSuperAdmin={isSuperAdmin}
       />
 
       {/* Team Sorting Modal */}
@@ -211,4 +213,3 @@ export const AllModals: React.FC<AllModalsProps> = ({
     </>
   );
 };
-
